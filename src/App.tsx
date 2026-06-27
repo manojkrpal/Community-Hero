@@ -247,6 +247,42 @@ export default function App() {
     }
   };
 
+  // Route issue to specific department (Officers or Admins only)
+  const handleRouteDepartment = async (department: string) => {
+    if (!selectedIssue || !currentUser) return;
+    
+    const updates: Partial<Issue> = {
+      assignedDepartment: department,
+      updatedAt: new Date().toISOString()
+    };
+
+    let oldStatus = selectedIssue.status;
+    let targetStatus = oldStatus;
+    // If status was Pending Verification or Submitted, update to Assigned
+    if (oldStatus === "Pending Verification" || oldStatus === "Submitted") {
+      updates.status = "Assigned";
+      targetStatus = "Assigned";
+    }
+
+    await updateIssue(selectedIssue.id, updates);
+
+    // Log to audit log timeline
+    await logTimelineUpdate(
+      selectedIssue.id,
+      currentUser.uid,
+      currentUser.name,
+      currentUser.role,
+      oldStatus,
+      targetStatus,
+      `Routed problem to ${department} department.`
+    );
+
+    const updatedList = await fetchIssues();
+    setIssues(updatedList);
+    const updatedIssue = updatedList.find(i => i.id === selectedIssue.id);
+    if (updatedIssue) setSelectedIssue(updatedIssue);
+  };
+
   // Change Issue status (Officers or Admins only)
   const handleStatusChange = async (targetStatus: IssueStatus, comment: string) => {
     if (!selectedIssue || !currentUser) return;
@@ -294,6 +330,45 @@ export default function App() {
 
   // Filtering Logic
   const filteredIssues = issues.filter(issue => {
+    const isApproved = [
+      "Verified",
+      "Assigned",
+      "Accepted",
+      "In Progress",
+      "Resolved",
+      "Citizen Confirmation",
+      "Closed"
+    ].includes(issue.status);
+
+    if (currentUser?.role === "Municipality Officer") {
+      // Municipal officer only see the approved incidents
+      if (!isApproved) {
+        return false;
+      }
+    } else if (currentUser?.role === "Administrator") {
+      // Administrator can see all reports for monitoring and operations
+    } else {
+      // Citizen / Guest / standard user
+      const isMyOwnIssue = currentUser && issue.reporterId === currentUser.uid;
+      const isPending = [
+        "Submitted",
+        "AI Processing",
+        "Pending Verification"
+      ].includes(issue.status);
+
+      if (isPending) {
+        // Can only see if they raised it themselves
+        if (!isMyOwnIssue) {
+          return false;
+        }
+      } else if (!isApproved) {
+        // Hide spam, rejected, or archived issues unless they raised it
+        if (!isMyOwnIssue) {
+          return false;
+        }
+      }
+    }
+
     const matchCategory = categoryFilter === "All" || issue.category === categoryFilter;
     const matchStatus = statusFilter === "All" || issue.status === statusFilter;
     const matchSeverity = severityFilter === "All" || issue.severity === severityFilter;
@@ -756,9 +831,14 @@ export default function App() {
                 {/* Info summary */}
                 <div className="p-5 space-y-5">
                   <div>
-                    <div className="flex gap-2 mb-2">
+                    <div className="flex flex-wrap gap-2 mb-2">
                       {getSeverityBadge(selectedIssue.severity)}
                       {getStatusBadge(selectedIssue.status)}
+                      {selectedIssue.assignedDepartment && (
+                        <span className="bg-blue-50 text-blue-700 border border-blue-200 font-bold px-2 py-0.5 rounded text-[10px] uppercase tracking-wider flex items-center gap-1">
+                          🏢 {selectedIssue.assignedDepartment}
+                        </span>
+                      )}
                     </div>
                     <h4 className="font-bold text-slate-900 text-base md:text-lg tracking-tight">
                       {selectedIssue.title}
@@ -964,6 +1044,29 @@ export default function App() {
                           >
                             ✓ Mark Case as Fully Resolved
                           </button>
+                        </div>
+                      )}
+
+                      {/* Department Routing Section */}
+                      {selectedIssue.status !== "Resolved" && selectedIssue.status !== "Closed" && (
+                        <div className="border-t border-slate-200/60 pt-3 mt-2 space-y-1.5">
+                          <label className="block text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
+                            🏢 Route Problem to Department
+                          </label>
+                          <div className="flex gap-2">
+                            <select
+                              value={selectedIssue.assignedDepartment || ""}
+                              onChange={async (e) => {
+                                await handleRouteDepartment(e.target.value);
+                              }}
+                              className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500/30"
+                            >
+                              <option value="" disabled>Select department to assign...</option>
+                              {["Public Works", "Water & Sewage", "Sanitation Dept", "Electrical Grid"].map(dept => (
+                                <option key={dept} value={dept}>{dept}</option>
+                              ))}
+                            </select>
+                          </div>
                         </div>
                       )}
 
