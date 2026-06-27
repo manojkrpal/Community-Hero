@@ -68,7 +68,6 @@ export default function App() {
   // UI States
   const [showReportForm, setShowReportForm] = useState(false);
   const [activeTab, setActiveTab] = useState<"feed" | "map" | "analytics">("feed");
-  const [selectedRole, setSelectedRole] = useState<UserRole>("Citizen");
   
   // Filters
   const [categoryFilter, setCategoryFilter] = useState("All");
@@ -94,7 +93,6 @@ export default function App() {
     onAuthChanged((user) => {
       if (user) {
         setCurrentUser(user);
-        setSelectedRole(user.role || "Citizen");
         setShowAuthGate(false);
       } else {
         setCurrentUser(null);
@@ -103,26 +101,6 @@ export default function App() {
       setAuthLoading(false);
     });
   }, []);
-
-  // Update current user role based on Selector
-  const handleRoleChange = (role: UserRole) => {
-    setSelectedRole(role);
-    if (currentUser) {
-      const updatedUser = { ...currentUser, role };
-      setCurrentUser(updatedUser);
-      // Synchronize in local user storage
-      try {
-        const users = JSON.parse(localStorage.getItem("community_hero_users") || "[]");
-        const idx = users.findIndex((u: any) => u.uid === currentUser.uid);
-        if (idx !== -1) {
-          users[idx] = updatedUser;
-          localStorage.setItem("community_hero_users", JSON.stringify(users));
-        }
-      } catch (e) {
-        console.error(e);
-      }
-    }
-  };
 
   // Fetch comments and timeline updates when selecting an issue
   useEffect(() => {
@@ -490,18 +468,12 @@ export default function App() {
             </button>
           )}
 
-          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1">
-            <span className="text-[10px] text-slate-400 font-semibold font-mono uppercase tracking-wider">Role:</span>
-            <select
-              value={selectedRole}
-              onChange={(e) => handleRoleChange(e.target.value as UserRole)}
-              className="bg-transparent text-xs font-bold text-slate-700 focus:outline-none cursor-pointer"
-            >
-              <option value="Citizen">Citizen ( Sarah )</option>
-              <option value="Municipality Officer">Municipality Officer ( Miller )</option>
-              <option value="Administrator">Admin</option>
-            </select>
-          </div>
+          {currentUser && (
+            <div className="flex items-center gap-2 bg-blue-50/50 border border-blue-100 rounded-xl px-3 py-1.5 shadow-2xs">
+              <span className="text-[10px] text-blue-500 font-bold font-mono uppercase tracking-wider">Role:</span>
+              <span className="text-xs font-black text-blue-700">{currentUser.role}</span>
+            </div>
+          )}
         </div>
       </nav>
 
@@ -564,6 +536,7 @@ export default function App() {
                 <ReportIssueForm
                   onSuccess={handleReportSuccess}
                   onCancel={() => setShowReportForm(false)}
+                  currentUser={currentUser}
                 />
               </motion.div>
             )}

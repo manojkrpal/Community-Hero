@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useRef } from "react";
-import { Issue, AIAnalysis } from "../types";
+import { Issue, AIAnalysis, User } from "../types";
 import { 
   Camera, 
   MapPin, 
@@ -22,9 +22,10 @@ import { motion, AnimatePresence } from "motion/react";
 interface ReportIssueFormProps {
   onSuccess: (newIssue: Omit<Issue, "id">) => void;
   onCancel: () => void;
+  currentUser?: User | null;
 }
 
-export default function ReportIssueForm({ onSuccess, onCancel }: ReportIssueFormProps) {
+export default function ReportIssueForm({ onSuccess, onCancel, currentUser }: ReportIssueFormProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [address, setAddress] = useState("");
@@ -154,8 +155,8 @@ export default function ReportIssueForm({ onSuccess, onCancel }: ReportIssueForm
               longitude,
               address: address || "City Center Municipal Sector",
               imageUrl: image || "https://images.unsplash.com/photo-1584824486509-112e4181ff6b?q=80&w=600&auto=format&fit=crop",
-              reporterId: "user-current",
-              reporterName: "Sarah Connor (You)",
+              reporterId: currentUser?.uid || "user-current",
+              reporterName: currentUser ? `${currentUser.name} (You)` : "Guest User (You)",
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString(),
               upvotes: 1, // Self-upvote

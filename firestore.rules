@@ -32,9 +32,9 @@ service cloud.firestore {
         && data.name is string && data.name.size() > 0 && data.name.size() <= 128
         && data.email is string && data.email.size() > 0 && data.email.size() <= 256
         && data.role is string && data.role.size() > 0 && data.role.size() <= 50
-        && data.reputation is int
-        && data.xp is int
-        && data.level is int
+        && (data.reputation is int || data.reputation is float)
+        && (data.xp is int || data.xp is float)
+        && (data.level is int || data.level is float)
         && data.badges is list
         && data.createdAt is string;
     }
@@ -46,9 +46,9 @@ service cloud.firestore {
       allow update: if isValidIssue(incoming());
     }
 
-    // Matches the users collection - strict owner-only access
+    // Matches the users collection - allow read for authenticated users to enable lookup & profile display
     match /users/{userId} {
-      allow read: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null;
       allow write: if request.auth != null && request.auth.uid == userId && isValidUser(incoming());
     }
   }

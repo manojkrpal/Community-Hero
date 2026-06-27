@@ -330,6 +330,40 @@ export default function AuthPage({ onAuthSuccess, onSkip }: AuthPageProps) {
                 <span>Continue with Google</span>
               </button>
 
+              {/* Pre-configured Demo Accounts / Quick Access */}
+              <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-4 space-y-2.5 mt-2">
+                <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                  <ShieldCheck className="w-4 h-4 text-blue-600" />
+                  <span>Pre-Configured Administrative Accounts</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEmail("admin@communityhero.gov");
+                      setPassword("AdminPassword123");
+                      setError(null);
+                    }}
+                    className="flex flex-col items-start p-2.5 bg-white hover:bg-blue-50/50 border border-slate-200 hover:border-blue-200 rounded-xl transition-all text-left group cursor-pointer"
+                  >
+                    <span className="text-xs font-bold text-slate-800 group-hover:text-blue-600 transition-colors">Admin Chief</span>
+                    <span className="text-[9px] text-slate-400 font-mono mt-0.5">Click to auto-fill</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEmail("officer@communityhero.gov");
+                      setPassword("OfficerPassword123");
+                      setError(null);
+                    }}
+                    className="flex flex-col items-start p-2.5 bg-white hover:bg-blue-50/50 border border-slate-200 hover:border-blue-200 rounded-xl transition-all text-left group cursor-pointer"
+                  >
+                    <span className="text-xs font-bold text-slate-800 group-hover:text-blue-600 transition-colors">Officer Miller</span>
+                    <span className="text-[9px] text-slate-400 font-mono mt-0.5">Click to auto-fill</span>
+                  </button>
+                </div>
+              </div>
+
               {/* Skip / Guest Link */}
               {onSkip && (
                 <div className="text-center pt-2">

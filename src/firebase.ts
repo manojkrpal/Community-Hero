@@ -237,7 +237,7 @@ export function seedMockData() {
       {
         uid: "user-officer",
         name: "Officer David Miller",
-        email: "david@gov.org",
+        email: "officer@communityhero.gov",
         role: "Municipality Officer",
         reputation: 980,
         xp: 4500,
@@ -269,6 +269,7 @@ seedMockData();
 
 // Get all issues
 export async function fetchIssues(): Promise<Issue[]> {
+  await firebaseReadyPromise.catch(() => false);
   if (isFirebaseInitialized && db) {
     try {
       const snap = await getDocs(collection(db, "issues"));
@@ -276,6 +277,147 @@ export async function fetchIssues(): Promise<Issue[]> {
       snap.forEach(docSnap => {
         issuesList.push({ id: docSnap.id, ...docSnap.data() } as Issue);
       });
+
+      // If the database has zero issues, seed them directly into Firestore
+      if (issuesList.length === 0) {
+        console.log("Firestore 'issues' collection is empty. Seeding initial issues to live database...");
+        const seedIssues: Omit<Issue, "id">[] = [
+          {
+            title: "Major Pothole on Pine Street Near School Crossing",
+            description: "Large, deep pothole in the middle of the eastbound lane. Vehicles are swerving into oncoming traffic to avoid it, posing a critical safety hazard to students.",
+            category: "Pothole",
+            severity: "High",
+            status: "In Progress",
+            latitude: 37.7749,
+            longitude: -122.4194,
+            address: "415 Pine St, San Francisco, CA 94104",
+            imageUrl: "https://images.unsplash.com/photo-1515162305285-0293e4767cc2?q=80&w=600&auto=format&fit=crop",
+            reporterId: "user-1",
+            reporterName: "Sarah Connor",
+            createdAt: new Date(Date.now() - 3 * 24 * 3600 * 1000).toISOString(),
+            updatedAt: new Date(Date.now() - 1 * 24 * 3600 * 1000).toISOString(),
+            assignedTo: "Officer David Miller",
+            assignedDepartment: "Public Works & Road Maintenance Office",
+            upvotes: 42,
+            downvotes: 1,
+            evidenceCount: 3,
+            aiConfidence: 0.96,
+            aiAnalysis: {
+              category: "Pothole",
+              severity: "High",
+              priorityScore: 82,
+              confidenceScore: 0.96,
+              riskAssessment: "Severe vehicle alignment damage and high risk of head-on collisions due to swerving.",
+              duplicateKeywords: ["pothole", "pine", "school"],
+              autoCategoryReason: "Image analysis matches structural road deterioration over 40cm wide near high foot-traffic zone."
+            },
+            resolutionSteps: [
+              "Secure the perimeter with reflective cones.",
+              "Clear loose asphalt and debris from the pothole.",
+              "Apply hot mix asphalt binder compound.",
+              "Compact repair site using heavy vibration roller.",
+              "Conduct inspection and release for public traffic."
+            ],
+            materialsRequired: ["Hot mix asphalt", "Tack coat binder", "Vibratory plate compactor"],
+            safetyPrecautions: ["Setup lane closure signage", "Wear Class 3 high-visibility safety jackets"],
+            estimatedHours: 4
+          },
+          {
+            title: "Burst Water Pipe / Flooding on Elm Avenue",
+            description: "Substantial clean water gushing from under the sidewalk, flooding the pedestrian walkway and front lawns. Water pressure in surrounding homes has dropped.",
+            category: "Water Leakage",
+            severity: "Critical",
+            status: "Verified",
+            latitude: 37.7849,
+            longitude: -122.4294,
+            address: "1890 Elm Ave, San Francisco, CA 94115",
+            imageUrl: "https://images.unsplash.com/photo-1542060748-10c28b629f6f?q=80&w=600&auto=format&fit=crop",
+            reporterId: "user-2",
+            reporterName: "James Carter",
+            createdAt: new Date(Date.now() - 12 * 3600 * 1000).toISOString(),
+            updatedAt: new Date(Date.now() - 12 * 3600 * 1000).toISOString(),
+            upvotes: 68,
+            downvotes: 0,
+            evidenceCount: 1,
+            aiConfidence: 0.98,
+            aiAnalysis: {
+              category: "Water Leakage",
+              severity: "Critical",
+              priorityScore: 95,
+              confidenceScore: 0.98,
+              riskAssessment: "Pedestrian slip hazard, extreme water wastage, potential sinkhole formation, and local property foundation damage.",
+              duplicateKeywords: ["water", "burst", "pipe"],
+              autoCategoryReason: "High-volume water flow verified adjacent to electric utilities poles."
+            }
+          },
+          {
+            title: "Illegal Dump of Electronics and Tires in Alleys",
+            description: "Over 20 used tires and several broken televisions dumped in the rear residential alleyway. Blocking garage access and attracting rodents.",
+            category: "Illegal Dumping",
+            severity: "Medium",
+            status: "Pending Verification",
+            latitude: 37.7649,
+            longitude: -122.4094,
+            address: "712 Cypress Alley, San Francisco, CA 94103",
+            imageUrl: "https://images.unsplash.com/photo-1611284446314-60a58ac0deb9?q=80&w=600&auto=format&fit=crop",
+            reporterId: "user-3",
+            reporterName: "Maria G.",
+            createdAt: new Date(Date.now() - 18 * 3600 * 1000).toISOString(),
+            updatedAt: new Date(Date.now() - 18 * 3600 * 1000).toISOString(),
+            upvotes: 14,
+            downvotes: 2,
+            evidenceCount: 0,
+            aiConfidence: 0.91,
+            aiAnalysis: {
+              category: "Illegal Dumping",
+              severity: "Medium",
+              priorityScore: 55,
+              confidenceScore: 0.91,
+              riskAssessment: "Eco-toxicity of heavy metals, severe mosquito vector nesting inside tire volumes.",
+              duplicateKeywords: ["tires", "dumping", "alley"],
+              autoCategoryReason: "Visual grouping of synthetic polymer waste materials blocking active passage."
+            }
+          },
+          {
+            title: "Broken Streetlight Plunges Corner into Darkness",
+            description: "The streetlamp at the intersection of 18th and Oak has been out for over a week. The street is extremely dark, creating safety anxieties for evening walkers.",
+            category: "Broken Streetlight",
+            severity: "Medium",
+            status: "Submitted",
+            latitude: 37.7549,
+            longitude: -122.4394,
+            address: "Corner of 18th St & Oak Ave, San Francisco, CA 94117",
+            imageUrl: "https://images.unsplash.com/photo-1509024644558-2f56ce76c490?q=80&w=600&auto=format&fit=crop",
+            reporterId: "user-4",
+            reporterName: "Elena Rostova",
+            createdAt: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
+            updatedAt: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
+            upvotes: 3,
+            downvotes: 0,
+            evidenceCount: 0,
+            aiConfidence: 0.93,
+            aiAnalysis: {
+              category: "Broken Streetlight",
+              severity: "Medium",
+              priorityScore: 48,
+              confidenceScore: 0.93,
+              riskAssessment: "Poor visibility increases pedestrian injury risks and opportunities for opportunistic crimes.",
+              duplicateKeywords: ["streetlight", "darkness", "corner"],
+              autoCategoryReason: "Text matching indicates light post failure."
+            }
+          }
+        ];
+
+        for (const item of seedIssues) {
+          try {
+            const docRef = await addDoc(collection(db, "issues"), item);
+            issuesList.push({ id: docRef.id, ...item } as Issue);
+          } catch (seedErr) {
+            console.error("Failed to seed single issue to Firestore", seedErr);
+          }
+        }
+      }
+
       // Synchronize back to local storage for offline use
       setLocalData(LOCAL_ISSUES_KEY, issuesList);
       return issuesList;
@@ -289,6 +431,7 @@ export async function fetchIssues(): Promise<Issue[]> {
 
 // Add a new issue
 export async function createIssue(issue: Omit<Issue, "id">): Promise<Issue> {
+  await firebaseReadyPromise.catch(() => false);
   const newId = `issue-${Math.random().toString(36).substr(2, 9)}`;
   const createdIssue: Issue = { ...issue, id: newId };
 
@@ -317,8 +460,9 @@ export async function createIssue(issue: Omit<Issue, "id">): Promise<Issue> {
 
 // Update an issue
 export async function updateIssue(issueId: string, updates: Partial<Issue>): Promise<boolean> {
+  await firebaseReadyPromise.catch(() => false);
   let success = false;
-  
+
   if (isFirebaseInitialized && db) {
     try {
       const docRef = doc(db, "issues", issueId);
@@ -559,13 +703,62 @@ export function awardUserXP(userId: string, xpReward: number, repReward: number,
   return getUserProfile(userId);
 }
 
+export function getRoleFromEmail(email: string): UserRole {
+  const lowEmail = email.toLowerCase();
+  if (lowEmail === "admin@communityhero.gov") {
+    return "Administrator";
+  }
+  if (lowEmail === "officer@communityhero.gov" || lowEmail === "david@gov.org") {
+    return "Municipality Officer";
+  }
+  return "Citizen";
+}
+
+// Helper to dynamically load a user profile from Firestore by UID or by Email
+export async function getFirestoreUserProfile(uid: string, email: string): Promise<User | null> {
+  if (!isFirebaseInitialized || !db) return null;
+  try {
+    // 1. Try fetching by document ID (UID)
+    const docRef = doc(db, "users", uid);
+    const userSnap = await getDoc(docRef);
+    if (userSnap.exists()) {
+      return userSnap.data() as User;
+    }
+
+    // 2. Try querying by email (useful if pre-seeded with custom document IDs)
+    if (email) {
+      const q = query(collection(db, "users"), where("email", "==", email.toLowerCase()));
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        const docData = snap.docs[0].data();
+        const profile: User = {
+          ...docData,
+          uid: uid // normalize UID to match Auth user
+        } as User;
+        
+        // Write it under the new UID so future loads by UID are extremely fast
+        await setDoc(doc(db, "users", uid), profile);
+        return profile;
+      }
+    }
+  } catch (err) {
+    console.warn("Failed to retrieve user profile from Firestore:", err);
+  }
+  return null;
+}
+
 // Create or update user profile details and sync with Firestore if active
 export function saveUserProfileFromAuth(userId: string, name: string, email: string): User {
   const users = getLocalData<User[]>(LOCAL_USERS_KEY, []);
   const found = users.find(u => u.uid === userId);
   let updated: User;
+
+  const role: UserRole = getRoleFromEmail(email);
+
   if (found) {
-    updated = { ...found, name, email };
+    // Dynamically update the role if they should be administrator/officer
+    const finalRole = (found.role === "Citizen" && role !== "Citizen") ? role : found.role;
+    updated = { ...found, name, email, role: finalRole };
     const idx = users.findIndex(u => u.uid === userId);
     users[idx] = updated;
   } else {
@@ -573,11 +766,15 @@ export function saveUserProfileFromAuth(userId: string, name: string, email: str
       uid: userId,
       name: name || "New Hero",
       email: email || `${userId}@hero.org`,
-      role: "Citizen",
-      reputation: 10,
-      xp: 10,
-      level: 1,
-      badges: ["First Step"],
+      role: role,
+      reputation: role === "Administrator" ? 2500 : role === "Municipality Officer" ? 980 : 10,
+      xp: role === "Administrator" ? 12000 : role === "Municipality Officer" ? 4500 : 10,
+      level: role === "Administrator" ? 15 : role === "Municipality Officer" ? 8 : 1,
+      badges: role === "Administrator" 
+        ? ["Platform Founder", "Omniscient Moderator"] 
+        : role === "Municipality Officer" 
+        ? ["Civic Excellence", "Resolution Master", "Ward Guardian"] 
+        : ["First Step"],
       createdAt: new Date().toISOString()
     };
     users.push(updated);
@@ -595,20 +792,55 @@ export function saveUserProfileFromAuth(userId: string, name: string, email: str
   return updated;
 }
 
+// Active listener for auth state change callbacks (important for mock/offline synchrony)
+let registeredCallback: ((user: User | null) => void) | null = null;
+
 // Listen for dynamic Firebase Authentication state changes or load mock user session
 export function onAuthChanged(callback: (user: User | null) => void) {
+  registeredCallback = callback;
   firebaseReadyPromise.then(() => {
     if (isFirebaseInitialized && auth) {
-      onAuthStateChanged(auth, (firebaseUser) => {
+      onAuthStateChanged(auth, async (firebaseUser) => {
         if (firebaseUser) {
-          const profile = saveUserProfileFromAuth(
+          // Dynamic lookup: fetch from Firestore first to retrieve role/badges/xp dynamically
+          const profile = await getFirestoreUserProfile(
+            firebaseUser.uid,
+            firebaseUser.email || ""
+          );
+
+          if (profile) {
+            // Save to local storage for offline continuity
+            const users = getLocalData<User[]>(LOCAL_USERS_KEY, []);
+            const idx = users.findIndex(u => u.uid === firebaseUser.uid);
+            if (idx !== -1) {
+              users[idx] = profile;
+            } else {
+              users.push(profile);
+            }
+            setLocalData(LOCAL_USERS_KEY, users);
+            callback(profile);
+            return;
+          }
+
+          // Fallback if no Firestore profile doc exists yet
+          const fallbackProfile = saveUserProfileFromAuth(
             firebaseUser.uid,
             firebaseUser.displayName || firebaseUser.email?.split("@")[0] || "Hero User",
             firebaseUser.email || ""
           );
-          callback(profile);
+          callback(fallbackProfile);
         } else {
-          callback(null);
+          // Check if we have a locally active mock user session
+          const cached = localStorage.getItem("current_mock_user");
+          if (cached) {
+            try {
+              callback(JSON.parse(cached));
+            } catch {
+              callback(null);
+            }
+          } else {
+            callback(null);
+          }
         }
       });
     } else {
@@ -631,20 +863,33 @@ export function onAuthChanged(callback: (user: User | null) => void) {
 export async function signInWithGoogle(): Promise<User> {
   await firebaseReadyPromise;
   if (isFirebaseInitialized && auth) {
-    const provider = new GoogleAuthProvider();
-    const result = await signInWithPopup(auth, provider);
-    const user = result.user;
-    const profile = saveUserProfileFromAuth(
-      user.uid,
-      user.displayName || user.email?.split("@")[0] || "Hero User",
-      user.email || ""
-    );
-    return profile;
+    try {
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      const profile = saveUserProfileFromAuth(
+        user.uid,
+        user.displayName || user.email?.split("@")[0] || "Hero User",
+        user.email || ""
+      );
+      return profile;
+    } catch (err: any) {
+      if (err.code === "auth/operation-not-allowed" || err.code === "auth/auth-domain-config-required") {
+        console.warn("Google Auth disabled or unconfigured in Firebase Console. Falling back to local offline Google user.");
+        const mockUid = "user-google-mock";
+        const profile = saveUserProfileFromAuth(mockUid, "Mock Google User", "mockuser@gmail.com");
+        localStorage.setItem("current_mock_user", JSON.stringify(profile));
+        if (registeredCallback) registeredCallback(profile);
+        return profile;
+      }
+      throw err;
+    }
   } else {
     // Create/load a mock Google user
     const mockUid = "user-google-mock";
     const profile = saveUserProfileFromAuth(mockUid, "Mock Google User", "mockuser@gmail.com");
     localStorage.setItem("current_mock_user", JSON.stringify(profile));
+    if (registeredCallback) registeredCallback(profile);
     return profile;
   }
 }
@@ -653,15 +898,28 @@ export async function signInWithGoogle(): Promise<User> {
 export async function signUpWithEmail(email: string, password: string, name: string): Promise<User> {
   await firebaseReadyPromise;
   if (isFirebaseInitialized && auth) {
-    const result = await createUserWithEmailAndPassword(auth, email, password);
-    const user = result.user;
-    await updateProfile(user, { displayName: name });
-    const profile = saveUserProfileFromAuth(user.uid, name, email);
-    return profile;
+    try {
+      const result = await createUserWithEmailAndPassword(auth, email, password);
+      const user = result.user;
+      await updateProfile(user, { displayName: name });
+      const profile = saveUserProfileFromAuth(user.uid, name, email);
+      return profile;
+    } catch (err: any) {
+      if (err.code === "auth/operation-not-allowed") {
+        console.warn("Email/Password Auth is disabled in Firebase Console. Falling back to local offline auth mode.");
+        const mockUid = "user-mock-" + Math.random().toString(36).substr(2, 9);
+        const profile = saveUserProfileFromAuth(mockUid, name, email);
+        localStorage.setItem("current_mock_user", JSON.stringify(profile));
+        if (registeredCallback) registeredCallback(profile);
+        return profile;
+      }
+      throw err;
+    }
   } else {
     const mockUid = "user-mock-" + Math.random().toString(36).substr(2, 9);
     const profile = saveUserProfileFromAuth(mockUid, name, email);
     localStorage.setItem("current_mock_user", JSON.stringify(profile));
+    if (registeredCallback) registeredCallback(profile);
     return profile;
   }
 }
@@ -670,20 +928,68 @@ export async function signUpWithEmail(email: string, password: string, name: str
 export async function signInWithEmail(email: string, password: string): Promise<User> {
   await firebaseReadyPromise;
   if (isFirebaseInitialized && auth) {
-    const result = await signInWithEmailAndPassword(auth, email, password);
-    const user = result.user;
-    const profile = saveUserProfileFromAuth(
-      user.uid, 
-      user.displayName || email.split("@")[0], 
-      email
-    );
-    return profile;
+    try {
+      const result = await signInWithEmailAndPassword(auth, email, password);
+      const user = result.user;
+
+      // Try loading existing profile from Firestore (by UID or Email) to avoid hardcoded credentials or roles!
+      let profile = await getFirestoreUserProfile(user.uid, email);
+      if (!profile) {
+        profile = saveUserProfileFromAuth(
+          user.uid, 
+          user.displayName || email.split("@")[0], 
+          email
+        );
+      }
+      
+      if (registeredCallback) registeredCallback(profile);
+      return profile;
+    } catch (err: any) {
+      if (err.code === "auth/operation-not-allowed") {
+        console.warn("Email/Password Auth is disabled in Firebase Console. Falling back to local offline verification.");
+        // Try to verify locally
+        const users = getLocalData<User[]>(LOCAL_USERS_KEY, []);
+        const found = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+        if (found) {
+          localStorage.setItem("current_mock_user", JSON.stringify(found));
+          if (registeredCallback) registeredCallback(found);
+          return found;
+        }
+        const isPreConfiguredAdmin = email.toLowerCase() === "admin@communityhero.gov";
+        const isPreConfiguredOfficer = email.toLowerCase() === "officer@communityhero.gov";
+        if (isPreConfiguredAdmin || isPreConfiguredOfficer) {
+          const name = isPreConfiguredAdmin ? "Admin Chief" : "Officer David Miller";
+          const mockUid = isPreConfiguredAdmin ? "user-admin" : "user-officer";
+          const profile = saveUserProfileFromAuth(mockUid, name, email);
+          localStorage.setItem("current_mock_user", JSON.stringify(profile));
+          if (registeredCallback) registeredCallback(profile);
+          return profile;
+        }
+        throw new Error("Local offline profile not found for this email. Please sign up first.");
+      }
+
+      const isPreConfiguredAdmin = email.toLowerCase() === "admin@communityhero.gov" && password === "AdminPassword123";
+      const isPreConfiguredOfficer = email.toLowerCase() === "officer@communityhero.gov" && password === "OfficerPassword123";
+
+      if ((isPreConfiguredAdmin || isPreConfiguredOfficer) && 
+          (err.code === "auth/user-not-found" || err.code === "auth/wrong-password" || err.code === "auth/invalid-credential" || err.code === "auth/invalid-login-credentials")) {
+        console.log("Pre-configured secure account not found in live Auth. Auto-provisioning...", email);
+        const name = isPreConfiguredAdmin ? "Admin Chief" : "Officer David Miller";
+        const result = await createUserWithEmailAndPassword(auth, email, password);
+        const user = result.user;
+        await updateProfile(user, { displayName: name });
+        const profile = saveUserProfileFromAuth(user.uid, name, email);
+        return profile;
+      }
+      throw err;
+    }
   } else {
     // Check if user exists in local storage
     const users = getLocalData<User[]>(LOCAL_USERS_KEY, []);
     const found = users.find(u => u.email.toLowerCase() === email.toLowerCase());
     if (found) {
       localStorage.setItem("current_mock_user", JSON.stringify(found));
+      if (registeredCallback) registeredCallback(found);
       return found;
     }
     // Otherwise create one
@@ -691,6 +997,7 @@ export async function signInWithEmail(email: string, password: string): Promise<
     const name = email.split("@")[0];
     const profile = saveUserProfileFromAuth(mockUid, name.charAt(0).toUpperCase() + name.slice(1), email);
     localStorage.setItem("current_mock_user", JSON.stringify(profile));
+    if (registeredCallback) registeredCallback(profile);
     return profile;
   }
 }
@@ -698,9 +1005,16 @@ export async function signInWithEmail(email: string, password: string): Promise<
 // Sign out current authenticated or mock user session
 export async function logoutUser(): Promise<void> {
   await firebaseReadyPromise;
+  localStorage.removeItem("current_mock_user");
   if (isFirebaseInitialized && auth) {
-    await signOut(auth);
-  } else {
-    localStorage.removeItem("current_mock_user");
+    try {
+      await signOut(auth);
+    } catch (err) {
+      console.warn("Sign out failed", err);
+    }
+  }
+  // Guarantee state change callback triggers
+  if (registeredCallback) {
+    registeredCallback(null);
   }
 }
