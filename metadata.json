@@ -1,0 +1,6 @@
+{
+  "name": "Community Hero",
+  "description": "Hyperlocal AI-powered civic issue management and resolution platform with automated duplicate checks, category prediction, and dynamic community verifications.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

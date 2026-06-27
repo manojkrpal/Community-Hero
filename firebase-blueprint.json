@@ -1,0 +1,69 @@
+{
+  "entities": {
+    "Issue": {
+      "title": "Issue",
+      "description": "A geolocated citizen-reported community safety or municipal issue",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "category": { "type": "string" },
+        "severity": { "type": "string", "enum": ["Low", "Medium", "High", "Critical"] },
+        "status": { "type": "string" },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
+        "address": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "voiceUrl": { "type": "string" },
+        "reporterId": { "type": "string" },
+        "reporterName": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" },
+        "assignedTo": { "type": "string" },
+        "assignedDepartment": { "type": "string" },
+        "upvotes": { "type": "integer" },
+        "downvotes": { "type": "integer" },
+        "evidenceCount": { "type": "integer" },
+        "aiConfidence": { "type": "number" },
+        "aiAnalysis": { "type": "object" },
+        "verificationRadius": { "type": "number" },
+        "verificationConsensus": { "type": "string" },
+        "reputationPoints": { "type": "integer" },
+        "resolutionSteps": { "type": "array" },
+        "materialsRequired": { "type": "array" },
+        "safetyPrecautions": { "type": "array" },
+        "estimatedHours": { "type": "number" },
+        "resolutionNotes": { "type": "string" },
+        "resolutionImageUrl": { "type": "string" }
+      },
+      "required": ["title", "description", "category", "severity", "status", "latitude", "longitude", "address", "reporterId", "reporterName", "createdAt", "updatedAt"]
+    },
+    "User": {
+      "title": "User",
+      "description": "User profile with reputation and gamification stats",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string" },
+        "reputation": { "type": "integer" },
+        "xp": { "type": "integer" },
+        "level": { "type": "integer" },
+        "badges": { "type": "array" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["uid", "name", "email", "role", "reputation", "xp", "level", "badges", "createdAt"]
+    }
+  },
+  "firestore": {
+    "issues/{issueId}": {
+      "schema": "Issue",
+      "description": "Collection of geolocated citizen reports"
+    },
+    "users/{userId}": {
+      "schema": "User",
+      "description": "Collection of registered user profiles"
+    }
+  }
+}
