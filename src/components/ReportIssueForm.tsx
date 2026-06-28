@@ -112,6 +112,10 @@ export default function ReportIssueForm({ onSuccess, onCancel, currentUser }: Re
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (currentUser?.role !== "Citizen") {
+      setError("Only verified Citizens are authorized to post new issues. Officers and Admins cannot post issues.");
+      return;
+    }
     if (!title.trim() || !description.trim()) {
       setError("Please provide a concise title and details describing the community issue.");
       return;
@@ -230,6 +234,12 @@ export default function ReportIssueForm({ onSuccess, onCancel, currentUser }: Re
           <X className="w-5 h-5" />
         </button>
       </div>
+
+      {currentUser?.role !== "Citizen" && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl p-4 text-xs font-semibold mb-4">
+          ⚠️ Only verified Citizens are authorized to post new issues. Since you are logged in as a <strong>{currentUser?.role || "Guest/Officer"}</strong>, you can only review, verify, or resolve reports, not create them.
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* Title Input */}
@@ -400,7 +410,12 @@ export default function ReportIssueForm({ onSuccess, onCancel, currentUser }: Re
           </button>
           <button
             type="submit"
-            className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold flex items-center gap-2 transition-all shadow-md shadow-blue-50 active:scale-95"
+            disabled={currentUser?.role !== "Citizen"}
+            className={`px-6 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 transition-all shadow-md active:scale-95 ${
+              currentUser?.role !== "Citizen" 
+                ? "bg-slate-300 text-slate-500 cursor-not-allowed shadow-none active:scale-100" 
+                : "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-50"
+            }`}
           >
             <Sparkles className="w-4 h-4" /> Analyze & Submit Report
           </button>

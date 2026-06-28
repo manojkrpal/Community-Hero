@@ -20,7 +20,8 @@ import {
   Info, 
   Award, 
   AlertCircle,
-  Loader2
+  Loader2,
+  Building
 } from "lucide-react";
 import { motion } from "motion/react";
 
@@ -331,36 +332,95 @@ export default function AuthPage({ onAuthSuccess, onSkip }: AuthPageProps) {
               </button>
 
               {/* Pre-configured Demo Accounts / Quick Access */}
-              <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-4 space-y-2.5 mt-2">
-                <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                  <ShieldCheck className="w-4 h-4 text-blue-600" />
-                  <span>Pre-Configured Administrative Accounts</span>
+              <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-4 space-y-3 mt-2">
+                <div>
+                  <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                    <ShieldCheck className="w-4 h-4 text-blue-600" />
+                    <span>Pre-Configured City Officials</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEmail("admin@communityhero.gov");
+                        setPassword("AdminPassword123");
+                        setError(null);
+                      }}
+                      className="flex flex-col items-start p-2 bg-white hover:bg-blue-50/50 border border-slate-200 hover:border-blue-200 rounded-xl transition-all text-left group cursor-pointer w-full"
+                    >
+                      <span className="text-xs font-bold text-slate-800 group-hover:text-blue-600 transition-colors">Admin Chief</span>
+                      <span className="text-[9px] text-slate-400 font-mono mt-0.5">Click to auto-fill</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEmail("officer@communityhero.gov");
+                        setPassword("OfficerPassword123");
+                        setError(null);
+                      }}
+                      className="flex flex-col items-start p-2 bg-white hover:bg-blue-50/50 border border-slate-200 hover:border-blue-200 rounded-xl transition-all text-left group cursor-pointer w-full"
+                    >
+                      <span className="text-xs font-bold text-slate-800 group-hover:text-blue-600 transition-colors">Officer Miller</span>
+                      <span className="text-[9px] text-slate-400 font-mono mt-0.5">Click to auto-fill</span>
+                    </button>
+                  </div>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEmail("admin@communityhero.gov");
-                      setPassword("AdminPassword123");
-                      setError(null);
-                    }}
-                    className="flex flex-col items-start p-2.5 bg-white hover:bg-blue-50/50 border border-slate-200 hover:border-blue-200 rounded-xl transition-all text-left group cursor-pointer"
-                  >
-                    <span className="text-xs font-bold text-slate-800 group-hover:text-blue-600 transition-colors">Admin Chief</span>
-                    <span className="text-[9px] text-slate-400 font-mono mt-0.5">Click to auto-fill</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEmail("officer@communityhero.gov");
-                      setPassword("OfficerPassword123");
-                      setError(null);
-                    }}
-                    className="flex flex-col items-start p-2.5 bg-white hover:bg-blue-50/50 border border-slate-200 hover:border-blue-200 rounded-xl transition-all text-left group cursor-pointer"
-                  >
-                    <span className="text-xs font-bold text-slate-800 group-hover:text-blue-600 transition-colors">Officer Miller</span>
-                    <span className="text-[9px] text-slate-400 font-mono mt-0.5">Click to auto-fill</span>
-                  </button>
+
+                <div>
+                  <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                    <Building className="w-4 h-4 text-emerald-600" />
+                    <span>Department Crew Accounts</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEmail("publicworks@communityhero.gov");
+                        setPassword("WorksPassword123");
+                        setError(null);
+                      }}
+                      className="flex flex-col items-start p-2 bg-white hover:bg-emerald-50/50 border border-slate-200 hover:border-emerald-200 rounded-xl transition-all text-left group cursor-pointer w-full"
+                    >
+                      <span className="text-[11px] font-bold text-slate-800 group-hover:text-emerald-600 transition-colors truncate w-full">Public Works</span>
+                      <span className="text-[9px] text-slate-400 font-mono mt-0.5">WorksPassword123</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEmail("watersewage@communityhero.gov");
+                        setPassword("WaterPassword123");
+                        setError(null);
+                      }}
+                      className="flex flex-col items-start p-2 bg-white hover:bg-emerald-50/50 border border-slate-200 hover:border-emerald-200 rounded-xl transition-all text-left group cursor-pointer w-full"
+                    >
+                      <span className="text-[11px] font-bold text-slate-800 group-hover:text-emerald-600 transition-colors truncate w-full">Water & Sewage</span>
+                      <span className="text-[9px] text-slate-400 font-mono mt-0.5">WaterPassword123</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEmail("sanitation@communityhero.gov");
+                        setPassword("SanitationPassword123");
+                        setError(null);
+                      }}
+                      className="flex flex-col items-start p-2 bg-white hover:bg-emerald-50/50 border border-slate-200 hover:border-emerald-200 rounded-xl transition-all text-left group cursor-pointer w-full"
+                    >
+                      <span className="text-[11px] font-bold text-slate-800 group-hover:text-emerald-600 transition-colors truncate w-full">Sanitation Crew</span>
+                      <span className="text-[9px] text-slate-400 font-mono mt-0.5">SanitationPassword123</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEmail("electrical@communityhero.gov");
+                        setPassword("ElectricalPassword123");
+                        setError(null);
+                      }}
+                      className="flex flex-col items-start p-2 bg-white hover:bg-emerald-50/50 border border-slate-200 hover:border-emerald-200 rounded-xl transition-all text-left group cursor-pointer w-full"
+                    >
+                      <span className="text-[11px] font-bold text-slate-800 group-hover:text-emerald-600 transition-colors truncate w-full">Electrical Grid</span>
+                      <span className="text-[9px] text-slate-400 font-mono mt-0.5">ElectricalPassword123</span>
+                    </button>
+                  </div>
                 </div>
               </div>
 

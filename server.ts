@@ -25,6 +25,24 @@ function getGeminiClient(): GoogleGenAI {
   return aiInstance;
 }
 
+// Utility to generate content with automatic retry on transient failures (e.g., 503 high demand)
+async function generateContentWithRetry(ai: GoogleGenAI, params: any, maxRetries = 2): Promise<any> {
+  let attempt = 0;
+  while (attempt <= maxRetries) {
+    try {
+      return await ai.models.generateContent(params);
+    } catch (error: any) {
+      attempt++;
+      if (attempt > maxRetries) {
+        throw error;
+      }
+      console.warn(`Gemini API warning (Attempt ${attempt} of ${maxRetries + 1}):`, error.message || error);
+      // Wait with exponential backoff
+      await new Promise(resolve => setTimeout(resolve, attempt * 1000));
+    }
+  }
+}
+
 // 1. API Config: Serves Firebase config to client dynamically from firebase-applet-config.json
 app.get("/api/config", (req, res) => {
   try {
@@ -66,6 +84,8 @@ Based on this issue, predict the following fields:
 5. "riskAssessment": A short sentence highlighting the immediate risks (e.g., vehicle accidents, disease vector, electrocution).
 6. "duplicateKeywords": A short array of 3 lowercase search terms to query other issues in the database to detect potential duplicates.
 7. "autoCategoryReason": A concise technical justification for the chosen category and severity.
+8. "suggestedDepartment": Predict the best department to solve this issue. Must be exactly one of: "Public Works", "Water & Sewage", "Sanitation Dept", "Electrical Grid".
+9. "suggestedDepartmentReason": A brief professional explanation justifying why this department is assigned.
 
 Your response MUST be valid JSON only, using the structure specified above. Do not include markdown codeblocks or extra conversational text.
 `;
@@ -73,8 +93,8 @@ Your response MUST be valid JSON only, using the structure specified above. Do n
     let responseText = "";
     if (imageBase64) {
       // If image is provided, we can do multi-modal prompt
-      const result = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+      const result = await generateContentWithRetry(ai, {
+        model: "gemini-3.5-flash",
         contents: [
           {
             role: "user",
@@ -95,8 +115,8 @@ Your response MUST be valid JSON only, using the structure specified above. Do n
       });
       responseText = result.text || "{}";
     } else {
-      const result = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+      const result = await generateContentWithRetry(ai, {
+        model: "gemini-3.5-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json"
@@ -120,7 +140,7 @@ Your response MUST be valid JSON only, using the structure specified above. Do n
     }
 
   } catch (error: any) {
-    console.error("AI Analysis Error:", error);
+    console.warn("AI Analysis Error (Using Fallback):", error.message || error);
     // Graceful fallback for demo purposes when Gemini key is missing
     const fallbackCategories = [
       "Pothole", "Water Leakage", "Broken Streetlight", 
@@ -138,6 +158,20 @@ Your response MUST be valid JSON only, using the structure specified above. Do n
       severity = "High";
     }
 
+    let fallbackDept = "Public Works";
+    let fallbackDeptReason = "Assigned to Public Works for general inspection and physical infrastructure restoration.";
+    const lowerText = (title + " " + description).toLowerCase();
+    if (lowerText.includes("light") || lowerText.includes("electric") || lowerText.includes("wire") || lowerText.includes("signal") || lowerText.includes("power")) {
+      fallbackDept = "Electrical Grid";
+      fallbackDeptReason = "Automatic keyword matching identified electrical, wiring, or signal grid concerns.";
+    } else if (lowerText.includes("water") || lowerText.includes("leak") || lowerText.includes("sewage") || lowerText.includes("drain") || lowerText.includes("pipe") || lowerText.includes("flood")) {
+      fallbackDept = "Water & Sewage";
+      fallbackDeptReason = "Automatic keyword matching identified water utility, leakage, or drain pipe issues.";
+    } else if (lowerText.includes("garbage") || lowerText.includes("waste") || lowerText.includes("dump") || lowerText.includes("trash") || lowerText.includes("litter") || lowerText.includes("sanitation")) {
+      fallbackDept = "Sanitation Dept";
+      fallbackDeptReason = "Automatic keyword matching identified cleanup, garbage, or environmental sanitation requirements.";
+    }
+
     const mockAnalysis = {
       category: predictedCategory,
       severity: severity,
@@ -145,13 +179,95 @@ Your response MUST be valid JSON only, using the structure specified above. Do n
       confidenceScore: 0.88,
       riskAssessment: "Potential safety hazards, vehicle damage, and localized disruptions in the community sector.",
       duplicateKeywords: title.toLowerCase().split(" ").slice(0, 3),
-      autoCategoryReason: "Local keyword evaluation triggered smart auto-classification fallback."
+      autoCategoryReason: "Local keyword evaluation triggered smart auto-classification fallback.",
+      suggestedDepartment: fallbackDept,
+      suggestedDepartmentReason: fallbackDeptReason
     };
 
     res.json({ 
       success: true, 
       analysis: mockAnalysis, 
       warning: "Running on sandbox fallback due to missing/invalid GEMINI_API_KEY environment configuration." 
+    });
+  }
+});
+
+// 3. AI Department Routing Suggestion Endpoint
+app.post("/api/suggest-department", async (req: any, res: any) => {
+  const { title, description, category, severity } = req.body;
+
+  if (!title || !description) {
+    return res.status(400).json({ success: false, error: "Title and description are required" });
+  }
+
+  try {
+    const ai = getGeminiClient();
+    const prompt = `
+You are the AI Civil Architect for the "Community Hero" municipality platform.
+Determine the most appropriate department to assign the following reported issue:
+
+Issue Title: "${title}"
+Issue Description: "${description}"
+Category: "${category || 'General'}"
+Severity: "${severity || 'Medium'}"
+
+Recommend exactly one of the following four departments:
+1. "Public Works" (for potholes, fallen trees, road damage, structural repairs)
+2. "Water & Sewage" (for water leakage, open drains, water log, sewage backup)
+3. "Sanitation Dept" (for garbage accumulation, illegal dumping, animal carcasses, cleanups)
+4. "Electrical Grid" (for broken streetlights, traffic signal malfunctions, exposed wiring)
+
+Provide your response strictly in the following JSON structure:
+{
+  "suggestedDepartment": "Public Works" | "Water & Sewage" | "Sanitation Dept" | "Electrical Grid",
+  "suggestedDepartmentReason": "A concise, technical, professional sentence justifying this assignment."
+}
+Do not include any explanation, conversational text, or markdown codeblocks outside this JSON.
+`;
+
+    const result = await generateContentWithRetry(ai, {
+      model: "gemini-3.5-flash",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json"
+      }
+    });
+
+    try {
+      const recommendation = JSON.parse(result.text?.trim() || "{}");
+      res.json({ success: true, recommendation });
+    } catch {
+      const jsonMatch = result.text?.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        res.json({ success: true, recommendation: JSON.parse(jsonMatch[0].trim()) });
+      } else {
+        throw new Error("Unable to parse department suggestion.");
+      }
+    }
+  } catch (error: any) {
+    // Graceful fallback logic
+    let dept = "Public Works";
+    let reason = "Assigned to Public Works for general inspection and physical infrastructure restoration.";
+    
+    const t = (title + " " + description + " " + (category || "")).toLowerCase();
+    if (t.includes("light") || t.includes("electric") || t.includes("wire") || t.includes("signal") || t.includes("power")) {
+      dept = "Electrical Grid";
+      reason = "Electrical issues detected in keywords, routed to Electrical Grid maintenance.";
+    } else if (t.includes("water") || t.includes("leak") || t.includes("sewage") || t.includes("drain") || t.includes("pipe") || t.includes("flood")) {
+      dept = "Water & Sewage";
+      reason = "Water and sewage issues detected in keywords, routed to Water & Sewage team.";
+    } else if (t.includes("garbage") || t.includes("waste") || t.includes("dump") || t.includes("trash") || t.includes("litter") || t.includes("sanitation")) {
+      dept = "Sanitation Dept";
+      reason = "Refuse or cleaning issues detected in keywords, routed to Sanitation Dept.";
+    }
+
+    res.json({
+      success: true,
+      recommendation: {
+        suggestedDepartment: dept,
+        suggestedDepartmentReason: reason
+      },
+      warning: "Fallback local routing used."
     });
   }
 });
@@ -186,8 +302,8 @@ Provide your response strictly in the following JSON structure:
 Do not include any explanation, conversational text or markdown codeblocks outside this JSON.
 `;
 
-    const result = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+    const result = await generateContentWithRetry(ai, {
+      model: "gemini-3.5-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json"
@@ -265,8 +381,8 @@ Provide a structured JSON output with three high-risk forecasts:
 Do not include codeblocks or text outside this JSON.
 `;
 
-    const result = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+    const result = await generateContentWithRetry(ai, {
+      model: "gemini-3.5-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json"

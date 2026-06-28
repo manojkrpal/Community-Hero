@@ -44,6 +44,7 @@ service cloud.firestore {
       allow read: if true;
       allow create: if isValidIssue(incoming());
       allow update: if isValidIssue(incoming());
+      allow delete: if true;
     }
 
     // Matches the users collection - allow read for authenticated users to enable lookup & profile display

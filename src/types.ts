@@ -12,7 +12,11 @@ export type UserRole =
   | "Contractor"
   | "Ward Officer"
   | "Administrator"
-  | "Guest";
+  | "Guest"
+  | "Public Works Officer"
+  | "Water & Sewage Officer"
+  | "Sanitation Officer"
+  | "Electrical Officer";
 
 export type IssueStatus =
   | "Submitted"
@@ -22,13 +26,16 @@ export type IssueStatus =
   | "Assigned"
   | "Accepted"
   | "In Progress"
+  | "Completed by Assigned Department"
   | "Resolved"
   | "Citizen Confirmation"
   | "Closed"
   | "Rejected"
   | "Duplicate"
   | "Spam"
-  | "Archived";
+  | "Archived"
+  | "Pending Edit Approval"
+  | "Pending Delete Approval";
 
 export interface AIAnalysis {
   category: string;
@@ -38,6 +45,8 @@ export interface AIAnalysis {
   riskAssessment: string;
   duplicateKeywords: string[];
   autoCategoryReason: string;
+  suggestedDepartment?: string;
+  suggestedDepartmentReason?: string;
 }
 
 export interface Issue {
@@ -72,6 +81,18 @@ export interface Issue {
   estimatedHours?: number;
   resolutionNotes?: string;
   resolutionImageUrl?: string;
+  completedImageUrl?: string;
+  completedNotes?: string;
+  editRequestPending?: boolean;
+  deleteRequestPending?: boolean;
+  editRequestApproved?: boolean;
+  deleteRequestApproved?: boolean;
+  preRequestStatus?: IssueStatus;
+  requestedEditTitle?: string;
+  requestedEditDescription?: string;
+  requestedEditCategory?: string;
+  requestedEditSeverity?: "Low" | "Medium" | "High" | "Critical";
+  requestedEditAddress?: string;
 }
 
 export interface User {
@@ -84,6 +105,7 @@ export interface User {
   level: number;
   badges: string[];
   createdAt: string;
+  department?: string | null;
 }
 
 export interface VerificationActivity {

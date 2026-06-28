@@ -11,6 +11,8 @@ import {
   query, 
   where,
   orderBy,
+  deleteDoc,
+  onSnapshot,
   Firestore
 } from "firebase/firestore";
 import { 
@@ -58,6 +60,53 @@ export const firebaseReadyPromise = fetch("/api/config")
     console.warn("Firebase failed to initialize dynamically. App running in robust Offline-Local mode.", err);
     return false;
   });
+
+export enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+export interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string | null;
+    email?: string | null;
+    emailVerified?: boolean | null;
+    isAnonymous?: boolean | null;
+    tenantId?: string | null;
+    providerInfo?: {
+      providerId?: string | null;
+      email?: string | null;
+    }[];
+  }
+}
+
+export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth?.currentUser?.uid || null,
+      email: auth?.currentUser?.email || null,
+      emailVerified: auth?.currentUser?.emailVerified || null,
+      isAnonymous: auth?.currentUser?.isAnonymous || null,
+      tenantId: auth?.currentUser?.tenantId || null,
+      providerInfo: auth?.currentUser?.providerData?.map(provider => ({
+        providerId: provider.providerId,
+        email: provider.email,
+      })) || []
+    },
+    operationType,
+    path
+  };
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
 
 // --- LOCAL STORAGE STATE MANAGEMENT (FALLBACK & OFFLINE) ---
 const LOCAL_ISSUES_KEY = "community_hero_issues";
@@ -429,6 +478,42 @@ export async function fetchIssues(): Promise<Issue[]> {
   return getLocalData<Issue[]>(LOCAL_ISSUES_KEY, []);
 }
 
+// Subscribe to live issues
+export function subscribeToIssues(callback: (issues: Issue[]) => void): () => void {
+  let unsub: (() => void) | null = null;
+  let active = true;
+
+  firebaseReadyPromise.then(() => {
+    if (!active) return;
+    if (isFirebaseInitialized && db) {
+      try {
+        unsub = onSnapshot(collection(db, "issues"), (snap) => {
+          const issuesList: Issue[] = [];
+          snap.forEach(docSnap => {
+            issuesList.push({ id: docSnap.id, ...docSnap.data() } as Issue);
+          });
+          callback(issuesList);
+        }, (err) => {
+          console.error("onSnapshot error:", err);
+          callback(getLocalData<Issue[]>(LOCAL_ISSUES_KEY, []));
+        });
+      } catch (err) {
+        console.error("Failed to setup onSnapshot:", err);
+        callback(getLocalData<Issue[]>(LOCAL_ISSUES_KEY, []));
+      }
+    } else {
+      callback(getLocalData<Issue[]>(LOCAL_ISSUES_KEY, []));
+    }
+  });
+
+  return () => {
+    active = false;
+    if (unsub) {
+      unsub();
+    }
+  };
+}
+
 // Add a new issue
 export async function createIssue(issue: Omit<Issue, "id">): Promise<Issue> {
   await firebaseReadyPromise.catch(() => false);
@@ -448,6 +533,7 @@ export async function createIssue(issue: Omit<Issue, "id">): Promise<Issue> {
       return savedIssue;
     } catch (err) {
       console.error("Firebase createIssue error, fallback to local storage", err);
+      handleFirestoreError(err, OperationType.CREATE, "issues");
     }
   }
 
@@ -470,6 +556,7 @@ export async function updateIssue(issueId: string, updates: Partial<Issue>): Pro
       success = true;
     } catch (err) {
       console.error("Firebase updateIssue error", err);
+      handleFirestoreError(err, OperationType.UPDATE, `issues/${issueId}`);
     }
   }
 
@@ -482,6 +569,29 @@ export async function updateIssue(issueId: string, updates: Partial<Issue>): Pro
     success = true;
   }
   return success;
+}
+
+// Delete an issue
+export async function deleteIssue(issueId: string): Promise<boolean> {
+  await firebaseReadyPromise.catch(() => false);
+  let success = false;
+
+  if (isFirebaseInitialized && db) {
+    try {
+      const docRef = doc(db, "issues", issueId);
+      await deleteDoc(docRef);
+      success = true;
+    } catch (err) {
+      console.error("Firebase deleteIssue error", err);
+      handleFirestoreError(err, OperationType.DELETE, `issues/${issueId}`);
+    }
+  }
+
+  // Always sync to local storage
+  const localIssues = getLocalData<Issue[]>(LOCAL_ISSUES_KEY, []);
+  const filtered = localIssues.filter(i => i.id !== issueId);
+  setLocalData(LOCAL_ISSUES_KEY, filtered);
+  return true;
 }
 
 // Upvote / Downvote
@@ -711,7 +821,36 @@ export function getRoleFromEmail(email: string): UserRole {
   if (lowEmail === "officer@communityhero.gov" || lowEmail === "david@gov.org") {
     return "Municipality Officer";
   }
+  if (lowEmail === "publicworks@communityhero.gov") {
+    return "Public Works Officer";
+  }
+  if (lowEmail === "watersewage@communityhero.gov") {
+    return "Water & Sewage Officer";
+  }
+  if (lowEmail === "sanitation@communityhero.gov") {
+    return "Sanitation Officer";
+  }
+  if (lowEmail === "electrical@communityhero.gov") {
+    return "Electrical Officer";
+  }
   return "Citizen";
+}
+
+export function getDepartmentFromEmail(email: string): string | undefined {
+  const lowEmail = email.toLowerCase();
+  if (lowEmail === "publicworks@communityhero.gov") {
+    return "Public Works";
+  }
+  if (lowEmail === "watersewage@communityhero.gov") {
+    return "Water & Sewage";
+  }
+  if (lowEmail === "sanitation@communityhero.gov") {
+    return "Sanitation Dept";
+  }
+  if (lowEmail === "electrical@communityhero.gov") {
+    return "Electrical Grid";
+  }
+  return undefined;
 }
 
 // Helper to dynamically load a user profile from Firestore by UID or by Email
@@ -754,28 +893,39 @@ export function saveUserProfileFromAuth(userId: string, name: string, email: str
   let updated: User;
 
   const role: UserRole = getRoleFromEmail(email);
+  const department = getDepartmentFromEmail(email);
 
   if (found) {
     // Dynamically update the role if they should be administrator/officer
     const finalRole = (found.role === "Citizen" && role !== "Citizen") ? role : found.role;
-    updated = { ...found, name, email, role: finalRole };
+    updated = { ...found, name, email, role: finalRole, department: department || found.department || null };
     const idx = users.findIndex(u => u.uid === userId);
     users[idx] = updated;
   } else {
+    const isDeptOfficer = [
+      "Public Works Officer",
+      "Water & Sewage Officer",
+      "Sanitation Officer",
+      "Electrical Officer"
+    ].includes(role);
+
     updated = {
       uid: userId,
       name: name || "New Hero",
       email: email || `${userId}@hero.org`,
       role: role,
-      reputation: role === "Administrator" ? 2500 : role === "Municipality Officer" ? 980 : 10,
-      xp: role === "Administrator" ? 12000 : role === "Municipality Officer" ? 4500 : 10,
-      level: role === "Administrator" ? 15 : role === "Municipality Officer" ? 8 : 1,
+      reputation: role === "Administrator" ? 2500 : role === "Municipality Officer" ? 980 : isDeptOfficer ? 800 : 10,
+      xp: role === "Administrator" ? 12000 : role === "Municipality Officer" ? 4500 : isDeptOfficer ? 3500 : 10,
+      level: role === "Administrator" ? 15 : role === "Municipality Officer" ? 8 : isDeptOfficer ? 6 : 1,
       badges: role === "Administrator" 
         ? ["Platform Founder", "Omniscient Moderator"] 
         : role === "Municipality Officer" 
         ? ["Civic Excellence", "Resolution Master", "Ward Guardian"] 
+        : isDeptOfficer
+        ? ["Department Expert", "Civic Crew Leader"]
         : ["First Step"],
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      department: department || null
     };
     users.push(updated);
   }
@@ -945,6 +1095,15 @@ export async function signInWithEmail(email: string, password: string): Promise<
       if (registeredCallback) registeredCallback(profile);
       return profile;
     } catch (err: any) {
+      const preconfiguredAccounts = [
+        { email: "admin@communityhero.gov", password: "AdminPassword123", name: "Admin Chief" },
+        { email: "officer@communityhero.gov", password: "OfficerPassword123", name: "Officer David Miller" },
+        { email: "publicworks@communityhero.gov", password: "WorksPassword123", name: "Public Works Chief" },
+        { email: "watersewage@communityhero.gov", password: "WaterPassword123", name: "Water & Sewage Chief" },
+        { email: "sanitation@communityhero.gov", password: "SanitationPassword123", name: "Sanitation Chief" },
+        { email: "electrical@communityhero.gov", password: "ElectricalPassword123", name: "Electrical Chief" }
+      ];
+
       if (err.code === "auth/operation-not-allowed") {
         console.warn("Email/Password Auth is disabled in Firebase Console. Falling back to local offline verification.");
         // Try to verify locally
@@ -955,12 +1114,11 @@ export async function signInWithEmail(email: string, password: string): Promise<
           if (registeredCallback) registeredCallback(found);
           return found;
         }
-        const isPreConfiguredAdmin = email.toLowerCase() === "admin@communityhero.gov";
-        const isPreConfiguredOfficer = email.toLowerCase() === "officer@communityhero.gov";
-        if (isPreConfiguredAdmin || isPreConfiguredOfficer) {
-          const name = isPreConfiguredAdmin ? "Admin Chief" : "Officer David Miller";
-          const mockUid = isPreConfiguredAdmin ? "user-admin" : "user-officer";
-          const profile = saveUserProfileFromAuth(mockUid, name, email);
+        
+        const foundPreConfig = preconfiguredAccounts.find(acc => acc.email.toLowerCase() === email.toLowerCase());
+        if (foundPreConfig) {
+          const mockUid = "user-" + foundPreConfig.email.split("@")[0];
+          const profile = saveUserProfileFromAuth(mockUid, foundPreConfig.name, email);
           localStorage.setItem("current_mock_user", JSON.stringify(profile));
           if (registeredCallback) registeredCallback(profile);
           return profile;
@@ -968,17 +1126,17 @@ export async function signInWithEmail(email: string, password: string): Promise<
         throw new Error("Local offline profile not found for this email. Please sign up first.");
       }
 
-      const isPreConfiguredAdmin = email.toLowerCase() === "admin@communityhero.gov" && password === "AdminPassword123";
-      const isPreConfiguredOfficer = email.toLowerCase() === "officer@communityhero.gov" && password === "OfficerPassword123";
+      const matchedAccount = preconfiguredAccounts.find(
+        acc => acc.email.toLowerCase() === email.toLowerCase() && password === acc.password
+      );
 
-      if ((isPreConfiguredAdmin || isPreConfiguredOfficer) && 
+      if (matchedAccount && 
           (err.code === "auth/user-not-found" || err.code === "auth/wrong-password" || err.code === "auth/invalid-credential" || err.code === "auth/invalid-login-credentials")) {
         console.log("Pre-configured secure account not found in live Auth. Auto-provisioning...", email);
-        const name = isPreConfiguredAdmin ? "Admin Chief" : "Officer David Miller";
         const result = await createUserWithEmailAndPassword(auth, email, password);
         const user = result.user;
-        await updateProfile(user, { displayName: name });
-        const profile = saveUserProfileFromAuth(user.uid, name, email);
+        await updateProfile(user, { displayName: matchedAccount.name });
+        const profile = saveUserProfileFromAuth(user.uid, matchedAccount.name, email);
         return profile;
       }
       throw err;
