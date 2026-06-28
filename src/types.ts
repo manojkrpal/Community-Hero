@@ -93,6 +93,12 @@ export interface Issue {
   requestedEditCategory?: string;
   requestedEditSeverity?: "Low" | "Medium" | "High" | "Critical";
   requestedEditAddress?: string;
+  feedback?: {
+    adminFeedback?: string;
+    municipalityFeedback?: string;
+    rating?: number;
+    createdAt?: string;
+  };
 }
 
 export interface User {
