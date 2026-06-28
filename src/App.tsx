@@ -131,6 +131,7 @@ export default function App() {
   const [showReportForm, setShowReportForm] = useState(false);
   const [activeTab, setActiveTab] = useState<"feed" | "map" | "analytics">("feed");
   const [adminSubTab, setAdminSubTab] = useState<"pending" | "verified" | "inprogress" | "resolved" | "requests">("pending");
+  const [municipalitySubTab, setMunicipalitySubTab] = useState<"solved" | "inprogress" | "verified">("verified");
   
   // Filters
   const [categoryFilter, setCategoryFilter] = useState("All");
