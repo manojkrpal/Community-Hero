@@ -53,8 +53,8 @@ export default function ReportIssueForm({ onSuccess, onCancel, currentUser }: Re
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [address, setAddress] = useState("");
-  const [latitude, setLatitude] = useState(37.7749);
-  const [longitude, setLongitude] = useState(-122.4194);
+  const [latitude, setLatitude] = useState(0);
+  const [longitude, setLongitude] = useState(0);
   const [image, setImage] = useState<string | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   
@@ -95,9 +95,9 @@ export default function ReportIssueForm({ onSuccess, onCancel, currentUser }: Re
         },
         (err) => {
           console.warn("Geolocation permission declined, placing pin on standard Municipal center.", err);
-          // Random offset near San Francisco City Hall
-          const mockLat = 37.7792 + (Math.random() - 0.5) * 0.02;
-          const mockLng = -122.4191 + (Math.random() - 0.5) * 0.02;
+          // Use current coordinates or default
+          const mockLat = latitude || 0;
+          const mockLng = longitude || 0;
           setLatitude(mockLat);
           setLongitude(mockLng);
           setAddress(`City Hall District Area (Geocoded fallback)`);
@@ -349,7 +349,7 @@ export default function ReportIssueForm({ onSuccess, onCancel, currentUser }: Re
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="e.g. 415 Pine St, San Francisco, CA"
+                  placeholder="e.g. 123 Main St, City, Country"
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-3 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all"

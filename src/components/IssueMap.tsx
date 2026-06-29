@@ -24,6 +24,7 @@ L.Icon.Default.mergeOptions({
 interface IssueMapProps {
   issues: Issue[];
   onSelectIssue: (issue: Issue) => void;
+  onViewDetails?: (issue: Issue) => void;
   selectedIssueId?: string;
 }
 
@@ -36,11 +37,11 @@ function ChangeView({ center, zoom }: { center: [number, number]; zoom: number }
   return null;
 }
 
-export default function IssueMap({ issues, onSelectIssue, selectedIssueId }: IssueMapProps) {
+export default function IssueMap({ issues, onSelectIssue, onViewDetails, selectedIssueId }: IssueMapProps) {
   const [mapMode, setMapMode] = useState<"standard" | "alarming">("standard");
   const [searchQuery, setSearchQuery] = useState("");
-  const [viewCenter, setViewCenter] = useState<[number, number]>([37.7749, -122.4194]); // Default to SF
-  const [viewZoom, setViewZoom] = useState(13);
+  const [viewCenter, setViewCenter] = useState<[number, number]>([0, 0]); // Default center
+  const [viewZoom, setViewZoom] = useState(2);
 
   // Find selected issue
   const selectedIssue = issues.find((i) => i.id === selectedIssueId);
@@ -239,7 +240,7 @@ export default function IssueMap({ issues, onSelectIssue, selectedIssueId }: Iss
                       <span className="truncate">{issue.address}</span>
                     </div>
                     <button 
-                      onClick={() => onSelectIssue(issue)}
+                      onClick={() => onViewDetails ? onViewDetails(issue) : onSelectIssue(issue)}
                       className="w-full mt-3 bg-blue-600 text-white text-[10px] font-bold py-1.5 rounded-lg hover:bg-blue-700 transition-colors"
                     >
                       View Full Details
@@ -342,6 +343,12 @@ export default function IssueMap({ issues, onSelectIssue, selectedIssueId }: Iss
                 <MapPin className="w-3.5 h-3.5" />
                 <span className="truncate">{selectedIssue.address}</span>
               </div>
+              <button 
+                onClick={() => onViewDetails ? onViewDetails(selectedIssue) : onSelectIssue(selectedIssue)}
+                className="w-full mt-4 bg-slate-900 text-white text-[10px] font-bold py-2 rounded-lg hover:bg-slate-800 transition-colors flex items-center justify-center gap-2"
+              >
+                View Full Details in Feed
+              </button>
             </div>
           )}
         </div>

@@ -26,7 +26,8 @@ import {
   awardUserXP,
   onAuthChanged,
   logoutUser,
-  subscribeToIssues
+  subscribeToIssues,
+  cleanupSanFranciscoIssues
 } from "./firebase";
 import IssueMap from "./components/IssueMap";
 import ReportIssueForm from "./components/ReportIssueForm";
@@ -466,6 +467,14 @@ export default function App() {
 
   // Load Issues (Real-time) and Auth Session on Mount
   useEffect(() => {
+    // Perform cleanup of legacy San Francisco dummy data (one-time)
+    const cleanupDone = localStorage.getItem("sf_cleanup_performed");
+    if (!cleanupDone) {
+      cleanupSanFranciscoIssues().then(() => {
+        localStorage.setItem("sf_cleanup_performed", "true");
+      });
+    }
+
     // Request notification permission if supported
     if (typeof window !== "undefined" && "Notification" in window) {
       if (Notification.permission === "default") {
@@ -2919,6 +2928,47 @@ export default function App() {
               issues={filteredIssues}
               onSelectIssue={(issue) => {
                 setSelectedIssue(issue);
+              }}
+              onViewDetails={(issue) => {
+                setSelectedIssue(issue);
+                setActiveTab("feed");
+                
+                // Reset all filters to ensure the issue is visible in the feed
+                setCommCategoryFilter("All");
+                setCommSeverityFilter("All");
+                setAdminCategoryFilter("All");
+                setAdminSeverityFilter("All");
+                setMuniCategoryFilter("All");
+                setMuniSeverityFilter("All");
+                setMyCategoryFilter("All");
+                setMySeverityFilter("All");
+
+                // Set appropriate sub-tabs based on status
+                if (["Submitted", "AI Processing", "Pending Verification"].includes(issue.status)) {
+                  setAdminSubTab("pending");
+                } else if (["Verified", "Assigned", "Accepted"].includes(issue.status)) {
+                  setAdminSubTab("verified");
+                  setMunicipalitySubTab("verified");
+                  setCitizenSubTab("verified");
+                  setCommunitySubTab("verified");
+                } else if (["In Progress", "Completed by Assigned Department"].includes(issue.status)) {
+                  setAdminSubTab("inprogress");
+                  setMunicipalitySubTab("inprogress");
+                  setCitizenSubTab("inprogress");
+                  setCommunitySubTab("inprogress");
+                } else if (["Resolved", "Citizen Confirmation", "Closed"].includes(issue.status)) {
+                  setAdminSubTab("resolved");
+                  setMunicipalitySubTab("solved");
+                  setCitizenSubTab("solved");
+                  setCommunitySubTab("solved");
+                }
+
+                if (issue.editRequestPending || issue.deleteRequestPending) {
+                  setAdminSubTab("requests");
+                }
+
+                // Scroll to top to ensure the expanded card is visible
+                window.scrollTo({ top: 0, behavior: "smooth" });
               }}
               selectedIssueId={selectedIssue?.id}
             />

@@ -135,136 +135,7 @@ function setLocalData<T>(key: string, data: T): void {
 export function seedMockData() {
   const issues = getLocalData<Issue[]>(LOCAL_ISSUES_KEY, []);
   if (issues.length === 0) {
-    const mockIssues: Issue[] = [
-      {
-        id: "issue-1",
-        title: "Major Pothole on Pine Street Near School Crossing",
-        description: "Large, deep pothole in the middle of the eastbound lane. Vehicles are swerving into oncoming traffic to avoid it, posing a critical safety hazard to students.",
-        category: "Pothole",
-        severity: "High",
-        status: "In Progress",
-        latitude: 37.7749,
-        longitude: -122.4194,
-        address: "415 Pine St, San Francisco, CA 94104",
-        imageUrl: "https://images.unsplash.com/photo-1515162305285-0293e4767cc2?q=80&w=600&auto=format&fit=crop",
-        reporterId: "user-1",
-        reporterName: "Sarah Connor",
-        createdAt: new Date(Date.now() - 3 * 24 * 3600 * 1000).toISOString(),
-        updatedAt: new Date(Date.now() - 1 * 24 * 3600 * 1000).toISOString(),
-        assignedTo: "Officer David Miller",
-        assignedDepartment: "Public Works & Road Maintenance Office",
-        upvotes: 42,
-        downvotes: 1,
-        evidenceCount: 3,
-        aiConfidence: 0.96,
-        aiAnalysis: {
-          category: "Pothole",
-          severity: "High",
-          priorityScore: 82,
-          confidenceScore: 0.96,
-          riskAssessment: "Severe vehicle alignment damage and high risk of head-on collisions due to swerving.",
-          duplicateKeywords: ["pothole", "pine", "school"],
-          autoCategoryReason: "Image analysis matches structural road deterioration over 40cm wide near high foot-traffic zone."
-        },
-        resolutionSteps: [
-          "Secure the perimeter with reflective cones.",
-          "Clear loose asphalt and debris from the pothole.",
-          "Apply hot mix asphalt binder compound.",
-          "Compact repair site using heavy vibration roller.",
-          "Conduct inspection and release for public traffic."
-        ],
-        materialsRequired: ["Hot mix asphalt", "Tack coat binder", "Vibratory plate compactor"],
-        safetyPrecautions: ["Setup lane closure signage", "Wear Class 3 high-visibility safety jackets"],
-        estimatedHours: 4
-      },
-      {
-        id: "issue-2",
-        title: "Burst Water Pipe / Flooding on Elm Avenue",
-        description: "Substantial clean water gushing from under the sidewalk, flooding the pedestrian walkway and front lawns. Water pressure in surrounding homes has dropped.",
-        category: "Water Leakage",
-        severity: "Critical",
-        status: "Verified",
-        latitude: 37.7849,
-        longitude: -122.4294,
-        address: "1890 Elm Ave, San Francisco, CA 94115",
-        imageUrl: "https://images.unsplash.com/photo-1542060748-10c28b629f6f?q=80&w=600&auto=format&fit=crop",
-        reporterId: "user-2",
-        reporterName: "James Carter",
-        createdAt: new Date(Date.now() - 12 * 3600 * 1000).toISOString(),
-        updatedAt: new Date(Date.now() - 12 * 3600 * 1000).toISOString(),
-        upvotes: 68,
-        downvotes: 0,
-        evidenceCount: 1,
-        aiConfidence: 0.98,
-        aiAnalysis: {
-          category: "Water Leakage",
-          severity: "Critical",
-          priorityScore: 95,
-          confidenceScore: 0.98,
-          riskAssessment: "Pedestrian slip hazard, extreme water wastage, potential sinkhole formation, and local property foundation damage.",
-          duplicateKeywords: ["water", "burst", "pipe"],
-          autoCategoryReason: "High-volume water flow verified adjacent to electric utilities poles."
-        }
-      },
-      {
-        id: "issue-3",
-        title: "Illegal Dump of Electronics and Tires in Alleys",
-        description: "Over 20 used tires and several broken televisions dumped in the rear residential alleyway. Blocking garage access and attracting rodents.",
-        category: "Illegal Dumping",
-        severity: "Medium",
-        status: "Pending Verification",
-        latitude: 37.7649,
-        longitude: -122.4094,
-        address: "712 Cypress Alley, San Francisco, CA 94103",
-        imageUrl: "https://images.unsplash.com/photo-1611284446314-60a58ac0deb9?q=80&w=600&auto=format&fit=crop",
-        reporterId: "user-3",
-        reporterName: "Maria G.",
-        createdAt: new Date(Date.now() - 18 * 3600 * 1000).toISOString(),
-        updatedAt: new Date(Date.now() - 18 * 3600 * 1000).toISOString(),
-        upvotes: 14,
-        downvotes: 2,
-        evidenceCount: 0,
-        aiConfidence: 0.91,
-        aiAnalysis: {
-          category: "Illegal Dumping",
-          severity: "Medium",
-          priorityScore: 55,
-          confidenceScore: 0.91,
-          riskAssessment: "Eco-toxicity of heavy metals, severe mosquito vector nesting inside tire volumes.",
-          duplicateKeywords: ["tires", "dumping", "alley"],
-          autoCategoryReason: "Visual grouping of synthetic polymer waste materials blocking active passage."
-        }
-      },
-      {
-        id: "issue-4",
-        title: "Broken Streetlight Plunges Corner into Darkness",
-        description: "The streetlamp at the intersection of 18th and Oak has been out for over a week. The street is extremely dark, creating safety anxieties for evening walkers.",
-        category: "Broken Streetlight",
-        severity: "Medium",
-        status: "Submitted",
-        latitude: 37.7549,
-        longitude: -122.4394,
-        address: "Corner of 18th St & Oak Ave, San Francisco, CA 94117",
-        imageUrl: "https://images.unsplash.com/photo-1509024644558-2f56ce76c490?q=80&w=600&auto=format&fit=crop",
-        reporterId: "user-4",
-        reporterName: "Elena Rostova",
-        createdAt: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
-        updatedAt: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
-        upvotes: 3,
-        downvotes: 0,
-        evidenceCount: 0,
-        aiConfidence: 0.93,
-        aiAnalysis: {
-          category: "Broken Streetlight",
-          severity: "Medium",
-          priorityScore: 48,
-          confidenceScore: 0.93,
-          riskAssessment: "Poor visibility increases pedestrian injury risks and opportunities for opportunistic crimes.",
-          duplicateKeywords: ["streetlight", "darkness", "corner"],
-          autoCategoryReason: "Text matching indicates light post failure."
-        }
-      }
-    ];
+    const mockIssues: Issue[] = [];
     setLocalData(LOCAL_ISSUES_KEY, mockIssues);
   }
 
@@ -327,144 +198,9 @@ export async function fetchIssues(): Promise<Issue[]> {
         issuesList.push({ id: docSnap.id, ...docSnap.data() } as Issue);
       });
 
-      // If the database has zero issues, seed them directly into Firestore
+      // If the database has zero issues, log it
       if (issuesList.length === 0) {
-        console.log("Firestore 'issues' collection is empty. Seeding initial issues to live database...");
-        const seedIssues: Omit<Issue, "id">[] = [
-          {
-            title: "Major Pothole on Pine Street Near School Crossing",
-            description: "Large, deep pothole in the middle of the eastbound lane. Vehicles are swerving into oncoming traffic to avoid it, posing a critical safety hazard to students.",
-            category: "Pothole",
-            severity: "High",
-            status: "In Progress",
-            latitude: 37.7749,
-            longitude: -122.4194,
-            address: "415 Pine St, San Francisco, CA 94104",
-            imageUrl: "https://images.unsplash.com/photo-1515162305285-0293e4767cc2?q=80&w=600&auto=format&fit=crop",
-            reporterId: "user-1",
-            reporterName: "Sarah Connor",
-            createdAt: new Date(Date.now() - 3 * 24 * 3600 * 1000).toISOString(),
-            updatedAt: new Date(Date.now() - 1 * 24 * 3600 * 1000).toISOString(),
-            assignedTo: "Officer David Miller",
-            assignedDepartment: "Public Works & Road Maintenance Office",
-            upvotes: 42,
-            downvotes: 1,
-            evidenceCount: 3,
-            aiConfidence: 0.96,
-            aiAnalysis: {
-              category: "Pothole",
-              severity: "High",
-              priorityScore: 82,
-              confidenceScore: 0.96,
-              riskAssessment: "Severe vehicle alignment damage and high risk of head-on collisions due to swerving.",
-              duplicateKeywords: ["pothole", "pine", "school"],
-              autoCategoryReason: "Image analysis matches structural road deterioration over 40cm wide near high foot-traffic zone."
-            },
-            resolutionSteps: [
-              "Secure the perimeter with reflective cones.",
-              "Clear loose asphalt and debris from the pothole.",
-              "Apply hot mix asphalt binder compound.",
-              "Compact repair site using heavy vibration roller.",
-              "Conduct inspection and release for public traffic."
-            ],
-            materialsRequired: ["Hot mix asphalt", "Tack coat binder", "Vibratory plate compactor"],
-            safetyPrecautions: ["Setup lane closure signage", "Wear Class 3 high-visibility safety jackets"],
-            estimatedHours: 4
-          },
-          {
-            title: "Burst Water Pipe / Flooding on Elm Avenue",
-            description: "Substantial clean water gushing from under the sidewalk, flooding the pedestrian walkway and front lawns. Water pressure in surrounding homes has dropped.",
-            category: "Water Leakage",
-            severity: "Critical",
-            status: "Verified",
-            latitude: 37.7849,
-            longitude: -122.4294,
-            address: "1890 Elm Ave, San Francisco, CA 94115",
-            imageUrl: "https://images.unsplash.com/photo-1542060748-10c28b629f6f?q=80&w=600&auto=format&fit=crop",
-            reporterId: "user-2",
-            reporterName: "James Carter",
-            createdAt: new Date(Date.now() - 12 * 3600 * 1000).toISOString(),
-            updatedAt: new Date(Date.now() - 12 * 3600 * 1000).toISOString(),
-            upvotes: 68,
-            downvotes: 0,
-            evidenceCount: 1,
-            aiConfidence: 0.98,
-            aiAnalysis: {
-              category: "Water Leakage",
-              severity: "Critical",
-              priorityScore: 95,
-              confidenceScore: 0.98,
-              riskAssessment: "Pedestrian slip hazard, extreme water wastage, potential sinkhole formation, and local property foundation damage.",
-              duplicateKeywords: ["water", "burst", "pipe"],
-              autoCategoryReason: "High-volume water flow verified adjacent to electric utilities poles."
-            }
-          },
-          {
-            title: "Illegal Dump of Electronics and Tires in Alleys",
-            description: "Over 20 used tires and several broken televisions dumped in the rear residential alleyway. Blocking garage access and attracting rodents.",
-            category: "Illegal Dumping",
-            severity: "Medium",
-            status: "Pending Verification",
-            latitude: 37.7649,
-            longitude: -122.4094,
-            address: "712 Cypress Alley, San Francisco, CA 94103",
-            imageUrl: "https://images.unsplash.com/photo-1611284446314-60a58ac0deb9?q=80&w=600&auto=format&fit=crop",
-            reporterId: "user-3",
-            reporterName: "Maria G.",
-            createdAt: new Date(Date.now() - 18 * 3600 * 1000).toISOString(),
-            updatedAt: new Date(Date.now() - 18 * 3600 * 1000).toISOString(),
-            upvotes: 14,
-            downvotes: 2,
-            evidenceCount: 0,
-            aiConfidence: 0.91,
-            aiAnalysis: {
-              category: "Illegal Dumping",
-              severity: "Medium",
-              priorityScore: 55,
-              confidenceScore: 0.91,
-              riskAssessment: "Eco-toxicity of heavy metals, severe mosquito vector nesting inside tire volumes.",
-              duplicateKeywords: ["tires", "dumping", "alley"],
-              autoCategoryReason: "Visual grouping of synthetic polymer waste materials blocking active passage."
-            }
-          },
-          {
-            title: "Broken Streetlight Plunges Corner into Darkness",
-            description: "The streetlamp at the intersection of 18th and Oak has been out for over a week. The street is extremely dark, creating safety anxieties for evening walkers.",
-            category: "Broken Streetlight",
-            severity: "Medium",
-            status: "Submitted",
-            latitude: 37.7549,
-            longitude: -122.4394,
-            address: "Corner of 18th St & Oak Ave, San Francisco, CA 94117",
-            imageUrl: "https://images.unsplash.com/photo-1509024644558-2f56ce76c490?q=80&w=600&auto=format&fit=crop",
-            reporterId: "user-4",
-            reporterName: "Elena Rostova",
-            createdAt: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
-            updatedAt: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
-            upvotes: 3,
-            downvotes: 0,
-            evidenceCount: 0,
-            aiConfidence: 0.93,
-            aiAnalysis: {
-              category: "Broken Streetlight",
-              severity: "Medium",
-              priorityScore: 48,
-              confidenceScore: 0.93,
-              riskAssessment: "Poor visibility increases pedestrian injury risks and opportunities for opportunistic crimes.",
-              duplicateKeywords: ["streetlight", "darkness", "corner"],
-              autoCategoryReason: "Text matching indicates light post failure."
-            }
-          }
-        ];
-
-        for (const item of seedIssues) {
-          try {
-            const docRef = await addDoc(collection(db, "issues"), item);
-            issuesList.push({ id: docRef.id, ...item } as Issue);
-          } catch (seedErr) {
-            console.error("Failed to seed single issue to Firestore", seedErr);
-          }
-        }
+        console.log("Firestore 'issues' collection is empty.");
       }
 
       // Synchronize back to local storage for offline use
@@ -1175,4 +911,43 @@ export async function logoutUser(): Promise<void> {
   if (registeredCallback) {
     registeredCallback(null);
   }
+}
+
+// Cleanup function to remove issues in San Francisco
+export async function cleanupSanFranciscoIssues(): Promise<number> {
+  await firebaseReadyPromise.catch(() => false);
+  let count = 0;
+  if (isFirebaseInitialized && db) {
+    try {
+      const snap = await getDocs(collection(db, "issues"));
+      for (const docSnap of snap.docs) {
+        const data = docSnap.data();
+        const address = (data.address || "").toLowerCase();
+        // Check address or rough coordinates (SF is approx 37.7, -122.4)
+        const isSF = address.includes("san francisco") || 
+                     (data.latitude > 37.6 && data.latitude < 37.9 && 
+                      data.longitude > -122.6 && data.longitude < -122.3);
+        
+        if (isSF) {
+          await deleteDoc(doc(db, "issues", docSnap.id));
+          count++;
+        }
+      }
+      
+      // Also cleanup local storage
+      const localIssues = getLocalData<Issue[]>(LOCAL_ISSUES_KEY, []);
+      const filtered = localIssues.filter(i => {
+        const addr = (i.address || "").toLowerCase();
+        return !(addr.includes("san francisco") || 
+                (i.latitude > 37.6 && i.latitude < 37.9 && 
+                 i.longitude > -122.6 && i.longitude < -122.3));
+      });
+      setLocalData(LOCAL_ISSUES_KEY, filtered);
+      
+      console.log(`Cleaned up ${count} San Francisco issues from database.`);
+    } catch (err) {
+      console.error("Cleanup failed", err);
+    }
+  }
+  return count;
 }
