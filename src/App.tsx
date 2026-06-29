@@ -62,7 +62,8 @@ import {
   Bell,
   X,
   Star,
-  Send
+  Send,
+  Globe
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -131,14 +132,27 @@ export default function App() {
 
   // UI States
   const [showReportForm, setShowReportForm] = useState(false);
-  const [activeTab, setActiveTab] = useState<"feed" | "map" | "analytics">("feed");
+  const [activeTab, setActiveTab] = useState<"feed" | "my-issues" | "stats" | "map" | "admin" | "leaderboard">("feed");
   const [adminSubTab, setAdminSubTab] = useState<"pending" | "verified" | "inprogress" | "resolved" | "requests">("pending");
   const [municipalitySubTab, setMunicipalitySubTab] = useState<"solved" | "inprogress" | "verified">("verified");
+  const [citizenSubTab, setCitizenSubTab] = useState<"solved" | "inprogress" | "verified">("inprogress");
+  const [communitySubTab, setCommunitySubTab] = useState<"solved" | "inprogress" | "verified">("inprogress");
   
-  // Filters
-  const [categoryFilter, setCategoryFilter] = useState("All");
-  const [statusFilter, setStatusFilter] = useState("All");
-  const [severityFilter, setSeverityFilter] = useState("All");
+  // Filters for My Issues
+  const [myCategoryFilter, setMyCategoryFilter] = useState("All");
+  const [mySeverityFilter, setMySeverityFilter] = useState("All");
+
+  // Filters for Community Issues
+  const [commCategoryFilter, setCommCategoryFilter] = useState("All");
+  const [commSeverityFilter, setCommSeverityFilter] = useState("All");
+
+  // Filters for Admin Workspace
+  const [adminCategoryFilter, setAdminCategoryFilter] = useState("All");
+  const [adminSeverityFilter, setAdminSeverityFilter] = useState("All");
+
+  // Filters for Municipality Workspace
+  const [muniCategoryFilter, setMuniCategoryFilter] = useState("All");
+  const [muniSeverityFilter, setMuniSeverityFilter] = useState("All");
 
   // Suggestion AI resolution steps loading
   const [loadingResolutionSteps, setLoadingResolutionSteps] = useState(false);
@@ -888,10 +902,7 @@ export default function App() {
       }
     }
 
-    const matchCategory = categoryFilter === "All" || issue.category === categoryFilter;
-    const matchStatus = statusFilter === "All" || issue.status === statusFilter;
-    const matchSeverity = severityFilter === "All" || issue.severity === severityFilter;
-    return matchCategory && matchStatus && matchSeverity;
+    return true;
   });
 
   const getSeverityBadge = (severity: string) => {
@@ -1298,62 +1309,49 @@ export default function App() {
           {/* Tab Renderers */}
           {activeTab === "feed" && (
             <div className="space-y-4">
-              {/* Filter Strip */}
-              <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-xs flex flex-wrap gap-3 items-center justify-between">
-                <span className="text-xs font-bold text-slate-500 flex items-center gap-1.5 uppercase tracking-wider">
-                  <ListFilter className="w-4 h-4 text-slate-400" /> Filter Criteria
-                </span>
-
-                <div className="flex flex-wrap gap-2 items-center">
-                  <select
-                    value={categoryFilter}
-                    onChange={(e) => setCategoryFilter(e.target.value)}
-                    className="bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-600 font-semibold focus:outline-none"
-                  >
-                    <option value="All">All Categories</option>
-                    <option value="Pothole">Potholes</option>
-                    <option value="Water Leakage">Water Leakage</option>
-                    <option value="Garbage Accumulation">Garbage Accumulation</option>
-                    <option value="Illegal Dumping">Illegal Dumping</option>
-                    <option value="Broken Streetlight">Streetlamps</option>
-                    <option value="Flooding">Flooding</option>
-                    <option value="Public Safety">Public Safety</option>
-                  </select>
-
-                  {currentUser?.role !== "Administrator" && (
-                    <select
-                      value={statusFilter}
-                      onChange={(e) => setStatusFilter(e.target.value)}
-                      className="bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-600 font-semibold focus:outline-none"
-                    >
-                      <option value="All">All Statuses</option>
-                      <option value="Submitted">Submitted</option>
-                      <option value="Pending Verification">Pending Verification</option>
-                      <option value="Verified">Verified Consensus</option>
-                      <option value="In Progress">In Progress</option>
-                      <option value="Resolved">Resolved</option>
-                    </select>
-                  )}
-
-                  <select
-                    value={severityFilter}
-                    onChange={(e) => setSeverityFilter(e.target.value)}
-                    className="bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-600 font-semibold focus:outline-none"
-                  >
-                    <option value="All">All Severities</option>
-                    <option value="Critical">Critical</option>
-                    <option value="High">High</option>
-                    <option value="Medium">Medium</option>
-                    <option value="Low">Low</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Admin-specific Workspace Navigation */}
-              {currentUser?.role === "Administrator" && (
+              {/* Filter Strip removed as per user requ              {/* Admin-specific Workspace Navigation */}
+              {currentUser?.role === "Administrator" && (() => {
+                const adminIssuesFilteredBase = issues.filter(issue => {
+                  const matchCategory = adminCategoryFilter === "All" || issue.category === adminCategoryFilter;
+                  const matchSeverity = adminSeverityFilter === "All" || issue.severity === adminSeverityFilter;
+                  return matchCategory && matchSeverity;
+                });
+                
+                return (
                 <div className="bg-slate-100/80 border border-slate-200/80 p-2 rounded-2xl flex flex-wrap gap-2 shadow-2xs">
-                  <div className="w-full px-2 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                    🛡️ Admin Workspace
+                  <div className="w-full px-2 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      🛡️ Admin Workspace
+                    </div>
+                    
+                    <div className="flex gap-1.5">
+                      <select
+                        value={adminCategoryFilter}
+                        onChange={(e) => setAdminCategoryFilter(e.target.value)}
+                        className="bg-white border border-slate-200 rounded-lg px-2 py-0.5 text-[9px] text-slate-600 font-bold focus:outline-none"
+                      >
+                        <option value="All">All Categories</option>
+                        <option value="Pothole">Potholes</option>
+                        <option value="Water Leakage">Water Leakage</option>
+                        <option value="Garbage Accumulation">Garbage Accumulation</option>
+                        <option value="Illegal Dumping">Illegal Dumping</option>
+                        <option value="Broken Streetlight">Streetlamps</option>
+                        <option value="Flooding">Flooding</option>
+                        <option value="Public Safety">Public Safety</option>
+                      </select>
+
+                      <select
+                        value={adminSeverityFilter}
+                        onChange={(e) => setAdminSeverityFilter(e.target.value)}
+                        className="bg-white border border-slate-200 rounded-lg px-2 py-0.5 text-[9px] text-slate-600 font-bold focus:outline-none"
+                      >
+                        <option value="All">All Severities</option>
+                        <option value="Critical">Critical</option>
+                        <option value="High">High</option>
+                        <option value="Medium">Medium</option>
+                        <option value="Low">Low</option>
+                      </select>
+                    </div>
                   </div>
                   <button
                     onClick={() => setAdminSubTab("pending")}
@@ -1365,7 +1363,7 @@ export default function App() {
                   >
                     <span>⏳ Pending Verification</span>
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${adminSubTab === "pending" ? "bg-white text-amber-600 font-bold" : "bg-slate-100 text-slate-600"}`}>
-                      {issues.filter(issue => ["Submitted", "AI Processing", "Pending Verification"].includes(issue.status)).length}
+                      {adminIssuesFilteredBase.filter(issue => ["Submitted", "AI Processing", "Pending Verification"].includes(issue.status)).length}
                     </span>
                   </button>
                   
@@ -1379,7 +1377,7 @@ export default function App() {
                   >
                     <span>✅ Verified</span>
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${adminSubTab === "verified" ? "bg-white text-emerald-700 font-bold" : "bg-slate-100 text-slate-600"}`}>
-                      {issues.filter(issue => ["Verified", "Assigned", "Accepted"].includes(issue.status)).length}
+                      {adminIssuesFilteredBase.filter(issue => ["Verified", "Assigned", "Accepted"].includes(issue.status)).length}
                     </span>
                   </button>
 
@@ -1391,9 +1389,9 @@ export default function App() {
                         : "bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-800 border border-slate-200/60"
                     }`}
                   >
-                    <span>⚙️ In Progress</span>
+                    <span>🔄 In Progress</span>
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${adminSubTab === "inprogress" ? "bg-white text-blue-700 font-bold" : "bg-slate-100 text-slate-600"}`}>
-                      {issues.filter(issue => ["In Progress", "Completed by Assigned Department"].includes(issue.status)).length}
+                      {adminIssuesFilteredBase.filter(issue => ["In Progress", "Completed by Assigned Department"].includes(issue.status)).length}
                     </span>
                   </button>
 
@@ -1407,7 +1405,7 @@ export default function App() {
                   >
                     <span>🎯 Resolved</span>
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${adminSubTab === "resolved" ? "bg-white text-slate-700 font-bold" : "bg-slate-100 text-slate-600"}`}>
-                      {issues.filter(issue => ["Resolved", "Citizen Confirmation", "Closed"].includes(issue.status)).length}
+                      {adminIssuesFilteredBase.filter(issue => ["Resolved", "Citizen Confirmation", "Closed"].includes(issue.status)).length}
                     </span>
                   </button>
 
@@ -1421,17 +1419,55 @@ export default function App() {
                   >
                     <span>🚨 Edit/Delete Requests</span>
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${adminSubTab === "requests" ? "bg-white text-rose-700 font-bold animate-pulse" : "bg-slate-100 text-slate-600"}`}>
-                      {issues.filter(issue => issue.editRequestPending || issue.deleteRequestPending || issue.status === "Pending Edit Approval" || issue.status === "Pending Delete Approval").length}
+                      {adminIssuesFilteredBase.filter(issue => issue.editRequestPending || issue.deleteRequestPending || issue.status === "Pending Edit Approval" || issue.status === "Pending Delete Approval").length}
                     </span>
                   </button>
                 </div>
-              )}
+              )})()}
 
               {/* Municipality-specific Workspace Navigation */}
-              {(currentUser?.role === "Municipality Officer" || currentUser?.role === "Administrator") && (
+              {(currentUser?.role === "Municipality Officer" || currentUser?.role === "Administrator") && (() => {
+                const muniIssuesFilteredBase = issues.filter(issue => {
+                  const matchCategory = muniCategoryFilter === "All" || issue.category === muniCategoryFilter;
+                  const matchSeverity = muniSeverityFilter === "All" || issue.severity === muniSeverityFilter;
+                  return matchCategory && matchSeverity;
+                });
+
+                return (
                 <div className="bg-slate-100/80 border border-slate-200/80 p-2 rounded-2xl flex flex-wrap gap-2 shadow-2xs mt-2">
-                  <div className="w-full px-2 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                    <Building className="w-3 h-3" /> Municipality Workspace
+                  <div className="w-full px-2 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <Building className="w-3 h-3" /> Municipality Workspace
+                    </div>
+
+                    <div className="flex gap-1.5">
+                      <select
+                        value={muniCategoryFilter}
+                        onChange={(e) => setMuniCategoryFilter(e.target.value)}
+                        className="bg-white border border-slate-200 rounded-lg px-2 py-0.5 text-[9px] text-slate-600 font-bold focus:outline-none"
+                      >
+                        <option value="All">All Categories</option>
+                        <option value="Pothole">Potholes</option>
+                        <option value="Water Leakage">Water Leakage</option>
+                        <option value="Garbage Accumulation">Garbage Accumulation</option>
+                        <option value="Illegal Dumping">Illegal Dumping</option>
+                        <option value="Broken Streetlight">Streetlamps</option>
+                        <option value="Flooding">Flooding</option>
+                        <option value="Public Safety">Public Safety</option>
+                      </select>
+
+                      <select
+                        value={muniSeverityFilter}
+                        onChange={(e) => setMuniSeverityFilter(e.target.value)}
+                        className="bg-white border border-slate-200 rounded-lg px-2 py-0.5 text-[9px] text-slate-600 font-bold focus:outline-none"
+                      >
+                        <option value="All">All Severities</option>
+                        <option value="Critical">Critical</option>
+                        <option value="High">High</option>
+                        <option value="Medium">Medium</option>
+                        <option value="Low">Low</option>
+                      </select>
+                    </div>
                   </div>
                   <button
                     onClick={() => setMunicipalitySubTab("solved")}
@@ -1444,7 +1480,7 @@ export default function App() {
                     <CheckCircle className="w-3.5 h-3.5" />
                     <span>Solved</span>
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${municipalitySubTab === "solved" ? "bg-white text-emerald-700 font-bold" : "bg-slate-100 text-slate-600"}`}>
-                      {issues.filter(issue => ["Resolved", "Closed", "Citizen Confirmation"].includes(issue.status)).length}
+                      {muniIssuesFilteredBase.filter(issue => ["Resolved", "Closed", "Citizen Confirmation"].includes(issue.status)).length}
                     </span>
                   </button>
 
@@ -1459,7 +1495,7 @@ export default function App() {
                     <Clock className="w-3.5 h-3.5" />
                     <span>In Process</span>
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${municipalitySubTab === "inprogress" ? "bg-white text-blue-700 font-bold" : "bg-slate-100 text-slate-600"}`}>
-                      {issues.filter(issue => ["In Progress", "Completed by Assigned Department", "Accepted", "Assigned"].includes(issue.status)).length}
+                      {muniIssuesFilteredBase.filter(issue => ["In Progress", "Completed by Assigned Department", "Accepted", "Assigned"].includes(issue.status)).length}
                     </span>
                   </button>
 
@@ -1474,11 +1510,11 @@ export default function App() {
                     <CheckCircle2 className="w-3.5 h-3.5" />
                     <span>Verified by Admin</span>
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${municipalitySubTab === "verified" ? "bg-white text-indigo-700 font-bold" : "bg-slate-100 text-slate-600"}`}>
-                      {issues.filter(issue => issue.status === "Verified").length}
+                      {muniIssuesFilteredBase.filter(issue => issue.status === "Verified").length}
                     </span>
                   </button>
                 </div>
-              )}
+              )})()}
 
               {/* Feed List */}
               {(() => {
@@ -2528,25 +2564,148 @@ export default function App() {
                 }
 
                 if (isCitizen) {
-                  const myReportedIssues = filteredIssues.filter(
+                  const myIssuesBase = filteredIssues.filter(
                     issue => currentUser && issue.reporterId === currentUser.uid
                   );
-                  const communityIssues = filteredIssues.filter(
+                  const communityIssuesBase = filteredIssues.filter(
                     issue => !currentUser || issue.reporterId !== currentUser.uid
                   );
+                  
+                  // Filter my issues by sub-tab and local filters
+                  const myIssuesFilteredBase = myIssuesBase.filter(issue => {
+                    const matchCategory = myCategoryFilter === "All" || issue.category === myCategoryFilter;
+                    const matchSeverity = mySeverityFilter === "All" || issue.severity === mySeverityFilter;
+                    return matchCategory && matchSeverity;
+                  });
+
+                  let myReportedIssues = myIssuesFilteredBase;
+
+                  if (citizenSubTab === "solved") {
+                    myReportedIssues = myIssuesFilteredBase.filter(issue => 
+                      ["Resolved", "Closed", "Citizen Confirmation"].includes(issue.status)
+                    );
+                  } else if (citizenSubTab === "inprogress") {
+                    myReportedIssues = myIssuesFilteredBase.filter(issue => 
+                      ["In Progress", "Completed by Assigned Department", "Accepted", "Assigned"].includes(issue.status)
+                    );
+                  } else if (citizenSubTab === "verified") {
+                    myReportedIssues = myIssuesFilteredBase.filter(issue => 
+                      issue.status === "Verified"
+                    );
+                  }
+
+                  // Filter community issues by sub-tab and local filters
+                  const communityIssuesFilteredBase = communityIssuesBase.filter(issue => {
+                    const matchCategory = commCategoryFilter === "All" || issue.category === commCategoryFilter;
+                    const matchSeverity = commSeverityFilter === "All" || issue.severity === commSeverityFilter;
+                    return matchCategory && matchSeverity;
+                  });
+
+                  let communityIssues = communityIssuesFilteredBase;
+
+                  if (communitySubTab === "solved") {
+                    communityIssues = communityIssuesFilteredBase.filter(issue => 
+                      ["Resolved", "Closed", "Citizen Confirmation"].includes(issue.status)
+                    );
+                  } else if (communitySubTab === "inprogress") {
+                    communityIssues = communityIssuesFilteredBase.filter(issue => 
+                      ["In Progress", "Completed by Assigned Department", "Accepted", "Assigned"].includes(issue.status)
+                    );
+                  } else if (communitySubTab === "verified") {
+                    communityIssues = communityIssuesFilteredBase.filter(issue => 
+                      issue.status === "Verified"
+                    );
+                  }
 
                   return (
                     <div className="space-y-6">
                       {/* Section 1: My Reported Issues */}
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                      <div className="space-y-4">
+                        <div className="flex flex-wrap items-center justify-between px-1 gap-2">
                           <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                             <UserIcon className="w-4 h-4 text-blue-500" />
                             My Reported Issues
-                            <span className="bg-blue-50 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-full ml-1">
-                              {myReportedIssues.length}
-                            </span>
                           </h4>
+                          
+                          <div className="flex gap-2">
+                            <select
+                              value={myCategoryFilter}
+                              onChange={(e) => setMyCategoryFilter(e.target.value)}
+                              className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-[10px] text-slate-600 font-bold focus:outline-none"
+                            >
+                              <option value="All">All Categories</option>
+                              <option value="Pothole">Potholes</option>
+                              <option value="Water Leakage">Water Leakage</option>
+                              <option value="Garbage Accumulation">Garbage Accumulation</option>
+                              <option value="Illegal Dumping">Illegal Dumping</option>
+                              <option value="Broken Streetlight">Streetlamps</option>
+                              <option value="Flooding">Flooding</option>
+                              <option value="Public Safety">Public Safety</option>
+                            </select>
+
+                            <select
+                              value={mySeverityFilter}
+                              onChange={(e) => setMySeverityFilter(e.target.value)}
+                              className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-[10px] text-slate-600 font-bold focus:outline-none"
+                            >
+                              <option value="All">All Severities</option>
+                              <option value="Critical">Critical</option>
+                              <option value="High">High</option>
+                              <option value="Medium">Medium</option>
+                              <option value="Low">Low</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Citizen Workspace Navigation */}
+                        <div className="bg-slate-100/80 border border-slate-200/80 p-2 rounded-2xl flex flex-wrap gap-2 shadow-2xs">
+                          <div className="w-full px-2 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                            <Building className="w-3 h-3" /> Citizen Workspace
+                          </div>
+                          <button
+                            onClick={() => setCitizenSubTab("solved")}
+                            className={`flex-1 min-w-[140px] px-3.5 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                              citizenSubTab === "solved"
+                                ? "bg-emerald-600 text-white shadow-sm"
+                                : "bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-800 border border-slate-200/60"
+                            }`}
+                          >
+                            <CheckCircle className="w-3.5 h-3.5" />
+                            <span>Solved</span>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${citizenSubTab === "solved" ? "bg-white text-emerald-700 font-bold" : "bg-slate-100 text-slate-600"}`}>
+                              {myIssuesFilteredBase.filter(issue => ["Resolved", "Closed", "Citizen Confirmation"].includes(issue.status)).length}
+                            </span>
+                          </button>
+
+                          <button
+                            onClick={() => setCitizenSubTab("inprogress")}
+                            className={`flex-1 min-w-[140px] px-3.5 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                              citizenSubTab === "inprogress"
+                                ? "bg-blue-600 text-white shadow-sm"
+                                : "bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-800 border border-slate-200/60"
+                            }`}
+                          >
+                            <Clock className="w-3.5 h-3.5" />
+                            <span>In Process</span>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${citizenSubTab === "inprogress" ? "bg-white text-blue-700 font-bold" : "bg-slate-100 text-slate-600"}`}>
+                              {myIssuesFilteredBase.filter(issue => ["In Progress", "Completed by Assigned Department", "Accepted", "Assigned"].includes(issue.status)).length}
+                            </span>
+                          </button>
+
+                          <button
+                            onClick={() => setCitizenSubTab("verified")}
+                            className={`flex-1 min-w-[140px] px-3.5 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                              citizenSubTab === "verified"
+                                ? "bg-indigo-600 text-white shadow-sm"
+                                : "bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-800 border border-slate-200/60"
+                            }`}
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Verified by Admin</span>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${citizenSubTab === "verified" ? "bg-white text-indigo-700 font-bold" : "bg-slate-100 text-slate-600"}`}>
+                              {myIssuesFilteredBase.filter(issue => issue.status === "Verified").length}
+                            </span>
+                          </button>
                         </div>
                         
                         {myReportedIssues.length > 0 ? (
@@ -2555,30 +2714,107 @@ export default function App() {
                           </div>
                         ) : (
                           <div className="bg-slate-50 border border-dashed border-slate-200 rounded-xl p-6 text-center text-slate-400 text-xs font-medium">
-                            No issues reported by you. Click "Report New Issue" to submit one.
+                            No issues in this category.
                           </div>
                         )}
                       </div>
 
-                      {/* Section 2: Community Issues */}
-                      <div className="space-y-3 pt-2">
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                      {/* Section 2: Other Nearby Issues */}
+                      <div className="space-y-4 pt-2">
+                        <div className="flex flex-wrap items-center justify-between px-1 gap-2">
                           <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                             <Users className="w-4 h-4 text-emerald-500" />
-                            Verified & In-Progress Issues
-                            <span className="bg-emerald-50 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-full ml-1">
-                              {communityIssues.length}
-                            </span>
+                            Other Nearby Issues
                           </h4>
+
+                          <div className="flex gap-2">
+                            <select
+                              value={commCategoryFilter}
+                              onChange={(e) => setCommCategoryFilter(e.target.value)}
+                              className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-[10px] text-slate-600 font-bold focus:outline-none"
+                            >
+                              <option value="All">All Categories</option>
+                              <option value="Pothole">Potholes</option>
+                              <option value="Water Leakage">Water Leakage</option>
+                              <option value="Garbage Accumulation">Garbage Accumulation</option>
+                              <option value="Illegal Dumping">Illegal Dumping</option>
+                              <option value="Broken Streetlight">Streetlamps</option>
+                              <option value="Flooding">Flooding</option>
+                              <option value="Public Safety">Public Safety</option>
+                            </select>
+
+                            <select
+                              value={commSeverityFilter}
+                              onChange={(e) => setCommSeverityFilter(e.target.value)}
+                              className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-[10px] text-slate-600 font-bold focus:outline-none"
+                            >
+                              <option value="All">All Severities</option>
+                              <option value="Critical">Critical</option>
+                              <option value="High">High</option>
+                              <option value="Medium">Medium</option>
+                              <option value="Low">Low</option>
+                            </select>
+                          </div>
                         </div>
 
+                        {/* Community Workspace Navigation */}
+                        <div className="bg-slate-100/80 border border-slate-200/80 p-2 rounded-2xl flex flex-wrap gap-2 shadow-2xs">
+                          <div className="w-full px-2 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                            <Globe className="w-3 h-3" /> Community Workspace
+                          </div>
+                          <button
+                            onClick={() => setCommunitySubTab("solved")}
+                            className={`flex-1 min-w-[140px] px-3.5 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                              communitySubTab === "solved"
+                                ? "bg-emerald-600 text-white shadow-sm"
+                                : "bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-800 border border-slate-200/60"
+                            }`}
+                          >
+                            <CheckCircle className="w-3.5 h-3.5" />
+                            <span>Solved</span>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${communitySubTab === "solved" ? "bg-white text-emerald-700 font-bold" : "bg-slate-100 text-slate-600"}`}>
+                              {communityIssuesFilteredBase.filter(issue => ["Resolved", "Closed", "Citizen Confirmation"].includes(issue.status)).length}
+                            </span>
+                          </button>
+
+                          <button
+                            onClick={() => setCommunitySubTab("inprogress")}
+                            className={`flex-1 min-w-[140px] px-3.5 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                              communitySubTab === "inprogress"
+                                ? "bg-blue-600 text-white shadow-sm"
+                                : "bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-800 border border-slate-200/60"
+                            }`}
+                          >
+                            <Clock className="w-3.5 h-3.5" />
+                            <span>In Process</span>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${communitySubTab === "inprogress" ? "bg-white text-blue-700 font-bold" : "bg-slate-100 text-slate-600"}`}>
+                              {communityIssuesFilteredBase.filter(issue => ["In Progress", "Completed by Assigned Department", "Accepted", "Assigned"].includes(issue.status)).length}
+                            </span>
+                          </button>
+
+                          <button
+                            onClick={() => setCommunitySubTab("verified")}
+                            className={`flex-1 min-w-[140px] px-3.5 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                              communitySubTab === "verified"
+                                ? "bg-indigo-600 text-white shadow-sm"
+                                : "bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-800 border border-slate-200/60"
+                            }`}
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Verified by Admin</span>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${communitySubTab === "verified" ? "bg-white text-indigo-700 font-bold" : "bg-slate-100 text-slate-600"}`}>
+                              {communityIssuesFilteredBase.filter(issue => issue.status === "Verified").length}
+                            </span>
+                          </button>
+                        </div>
+                        
                         {communityIssues.length > 0 ? (
                           <div className="grid grid-cols-1 gap-4">
                             {communityIssues.map(issue => renderIssueCard(issue))}
                           </div>
                         ) : (
                           <div className="bg-slate-50 border border-dashed border-slate-200 rounded-xl p-6 text-center text-slate-400 text-xs font-medium">
-                            No other verified or in-progress issues found in the community.
+                            No other issues in this category.
                           </div>
                         )}
                       </div>
@@ -2587,25 +2823,31 @@ export default function App() {
                 }
 
                 if (currentUser?.role === "Administrator") {
-                  let adminFilteredIssues = filteredIssues;
+                  const baseAdminIssues = filteredIssues.filter(issue => {
+                    const matchCategory = adminCategoryFilter === "All" || issue.category === adminCategoryFilter;
+                    const matchSeverity = adminSeverityFilter === "All" || issue.severity === adminSeverityFilter;
+                    return matchCategory && matchSeverity;
+                  });
+
+                  let adminFilteredIssues = baseAdminIssues;
                   if (adminSubTab === "pending") {
-                    adminFilteredIssues = filteredIssues.filter(issue => 
+                    adminFilteredIssues = baseAdminIssues.filter(issue => 
                       ["Submitted", "AI Processing", "Pending Verification"].includes(issue.status)
                     );
                   } else if (adminSubTab === "verified") {
-                    adminFilteredIssues = filteredIssues.filter(issue => 
+                    adminFilteredIssues = baseAdminIssues.filter(issue => 
                       ["Verified", "Assigned", "Accepted"].includes(issue.status)
                     );
                   } else if (adminSubTab === "inprogress") {
-                    adminFilteredIssues = filteredIssues.filter(issue => 
+                    adminFilteredIssues = baseAdminIssues.filter(issue => 
                       ["In Progress", "Completed by Assigned Department"].includes(issue.status)
                     );
                   } else if (adminSubTab === "resolved") {
-                    adminFilteredIssues = filteredIssues.filter(issue => 
+                    adminFilteredIssues = baseAdminIssues.filter(issue => 
                       ["Resolved", "Citizen Confirmation", "Closed"].includes(issue.status)
                     );
                   } else if (adminSubTab === "requests") {
-                    adminFilteredIssues = filteredIssues.filter(issue => 
+                    adminFilteredIssues = baseAdminIssues.filter(issue => 
                       issue.editRequestPending || issue.deleteRequestPending || issue.status === "Pending Edit Approval" || issue.status === "Pending Delete Approval"
                     );
                   }
@@ -2626,17 +2868,23 @@ export default function App() {
                 }
 
                 if (currentUser?.role === "Municipality Officer") {
-                  let muniFilteredIssues = filteredIssues;
+                  const baseMuniIssues = filteredIssues.filter(issue => {
+                    const matchCategory = muniCategoryFilter === "All" || issue.category === muniCategoryFilter;
+                    const matchSeverity = muniSeverityFilter === "All" || issue.severity === muniSeverityFilter;
+                    return matchCategory && matchSeverity;
+                  });
+
+                  let muniFilteredIssues = baseMuniIssues;
                   if (municipalitySubTab === "solved") {
-                    muniFilteredIssues = filteredIssues.filter(issue => 
+                    muniFilteredIssues = baseMuniIssues.filter(issue => 
                       ["Resolved", "Closed", "Citizen Confirmation"].includes(issue.status)
                     );
                   } else if (municipalitySubTab === "inprogress") {
-                    muniFilteredIssues = filteredIssues.filter(issue => 
+                    muniFilteredIssues = baseMuniIssues.filter(issue => 
                       ["In Progress", "Completed by Assigned Department", "Accepted", "Assigned"].includes(issue.status)
                     );
                   } else if (municipalitySubTab === "verified") {
-                    muniFilteredIssues = filteredIssues.filter(issue => 
+                    muniFilteredIssues = baseMuniIssues.filter(issue => 
                       issue.status === "Verified"
                     );
                   }
