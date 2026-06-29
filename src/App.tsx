@@ -1679,8 +1679,9 @@ export default function App() {
                                     </span>
                                   </div>
 
-                                  {/* Reporter Action Center panel */}
-                                  {currentUser && currentUser.uid === selectedIssue.reporterId && (
+                                  {/* Reporter Action Center panel - Hide if resolved */}
+                                  {currentUser && currentUser.uid === selectedIssue.reporterId && 
+                                   !["Resolved", "Citizen Confirmation", "Closed"].includes(selectedIssue.status) && (
                                     <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl space-y-3">
                                       <div className="text-xs font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
                                         <UserIcon className="w-3.5 h-3.5 text-blue-600" /> Reporter Action Center
@@ -1945,13 +1946,13 @@ export default function App() {
                                       </div>
                                       
                                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                        {selectedIssue.feedback.adminFeedback && (
+                                        {selectedIssue.feedback.adminFeedback && currentUser?.role === "Administrator" && (
                                           <div className="bg-white/80 p-3 rounded-lg border border-amber-100 shadow-sm">
                                             <span className="text-[10px] font-bold text-amber-600 uppercase block mb-1">Message to Admin</span>
                                             <p className="text-xs text-slate-700 italic leading-relaxed">"{selectedIssue.feedback.adminFeedback}"</p>
                                           </div>
                                         )}
-                                        {selectedIssue.feedback.municipalityFeedback && (
+                                        {selectedIssue.feedback.municipalityFeedback && (currentUser?.role === "Administrator" || currentUser?.role === "Municipality Officer") && (
                                           <div className="bg-white/80 p-3 rounded-lg border border-amber-100 shadow-sm">
                                             <span className="text-[10px] font-bold text-amber-600 uppercase block mb-1">Message to Municipality</span>
                                             <p className="text-xs text-slate-700 italic leading-relaxed">"{selectedIssue.feedback.municipalityFeedback}"</p>
