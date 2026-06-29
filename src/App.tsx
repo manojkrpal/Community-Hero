@@ -2919,7 +2919,6 @@ export default function App() {
               issues={filteredIssues}
               onSelectIssue={(issue) => {
                 setSelectedIssue(issue);
-                setActiveTab("feed");
               }}
               selectedIssueId={selectedIssue?.id}
             />

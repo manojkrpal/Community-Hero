@@ -3,7 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
+import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
+import L from "leaflet";
 import { Issue, AIAnalysis, User } from "../types";
 import { 
   Camera, 
@@ -18,6 +20,28 @@ import {
   Volume2
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+
+// Fix for default marker icons in Leaflet with Vite/React
+import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
+import markerIcon from "leaflet/dist/images/marker-icon.png";
+import markerShadow from "leaflet/dist/images/marker-shadow.png";
+
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconUrl: markerIcon,
+  iconRetinaUrl: markerIcon2x,
+  shadowUrl: markerShadow,
+});
+
+// Map click handler component
+function MapEvents({ onLocationSelect }: { onLocationSelect: (lat: number, lng: number) => void }) {
+  useMapEvents({
+    click(e) {
+      onLocationSelect(e.latlng.lat, e.latlng.lng);
+    },
+  });
+  return null;
+}
 
 interface ReportIssueFormProps {
   onSuccess: (newIssue: Omit<Issue, "id">) => void;
@@ -316,39 +340,81 @@ export default function ReportIssueForm({ onSuccess, onCancel, currentUser }: Re
         </div>
 
         {/* Location Section */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">
-              Physical Street Address / Sector
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="e.g. 415 Pine St, San Francisco, CA"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-3 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all"
-              />
-              <MapPin className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">
+                Physical Street Address / Sector
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="e.g. 415 Pine St, San Francisco, CA"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-3 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all"
+                />
+                <MapPin className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">
+                Spatial GPS Coordinates
+              </label>
+              <div className="flex gap-2">
+                <div className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs text-slate-500 font-mono flex items-center justify-between">
+                  <span>Lat: {latitude.toFixed(4)}</span>
+                  <span>Lng: {longitude.toFixed(4)}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleLocateMe}
+                  className="px-4 py-3 bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm shrink-0"
+                >
+                  <MapPin className="w-4 h-4" /> Locate Me
+                </button>
+              </div>
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">
-              Spatial GPS Coordinates
+          <div className="space-y-2">
+            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+              Or Select Location on Map
             </label>
-            <div className="flex gap-2">
-              <div className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs text-slate-500 font-mono flex items-center justify-between">
-                <span>Lat: {latitude.toFixed(4)}</span>
-                <span>Lng: {longitude.toFixed(4)}</span>
-              </div>
-              <button
-                type="button"
-                onClick={handleLocateMe}
-                className="px-4 py-3 bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm shrink-0"
+            <div className="h-48 rounded-xl overflow-hidden border border-slate-200 shadow-inner relative z-0">
+              <MapContainer 
+                center={[latitude, longitude]} 
+                zoom={14} 
+                style={{ height: "100%", width: "100%" }}
+                scrollWheelZoom={false}
               >
-                <MapPin className="w-4 h-4" /> Locate Me
-              </button>
+                <TileLayer
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
+                <Marker 
+                  position={[latitude, longitude]} 
+                  icon={L.divIcon({
+                    className: "custom-div-icon",
+                    html: `<div style="position: relative; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;">
+                      <svg width="30" height="30" viewBox="0 0 24 24" fill="#2563eb" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));">
+                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" stroke="white" stroke-width="2"/>
+                        <circle cx="12" cy="9" r="2.5" fill="white"/>
+                      </svg>
+                    </div>`,
+                    iconSize: [30, 30],
+                    iconAnchor: [15, 30]
+                  })}
+                />
+                <MapEvents onLocationSelect={(lat, lng) => {
+                  setLatitude(lat);
+                  setLongitude(lng);
+                }} />
+              </MapContainer>
+              <div className="absolute bottom-2 right-2 z-[1000] bg-white/90 backdrop-blur px-2 py-1 rounded-md text-[9px] font-bold text-blue-600 border border-blue-100 shadow-sm pointer-events-none">
+                Click map to move pin
+              </div>
             </div>
           </div>
         </div>
