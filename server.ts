@@ -498,7 +498,7 @@ User message: "${message}"
 
     res.json({ success: true, reply: replyText });
   } catch (error: any) {
-    console.error("AI Chat Error:", error);
+    console.warn("AI Chat Warning (Using Fallback):", error.message || error);
     
     // Fallback response for demo
     const fallbackResponses = [

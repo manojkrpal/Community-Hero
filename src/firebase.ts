@@ -1002,7 +1002,7 @@ export async function logoutUser(): Promise<void> {
   }
 }
 
-// Cleanup function to remove issues in San Francisco
+// Cleanup function to remove dummy issues
 export async function cleanupSanFranciscoIssues(): Promise<number> {
   await firebaseReadyPromise.catch(() => false);
   let count = 0;
@@ -1011,13 +1011,9 @@ export async function cleanupSanFranciscoIssues(): Promise<number> {
       const snap = await getDocs(collection(db, "issues"));
       for (const docSnap of snap.docs) {
         const data = docSnap.data();
-        const address = (data.address || "").toLowerCase();
-        // Check address or rough coordinates (SF is approx 37.7, -122.4)
-        const isSF = address.includes("san francisco") || 
-                     (data.latitude > 37.6 && data.latitude < 37.9 && 
-                      data.longitude > -122.6 && data.longitude < -122.3);
+        const dummyNames = ["Sarah Connor", "Officer David Miller", "Admin Chief"];
         
-        if (isSF) {
+        if (dummyNames.includes(data.reporterName)) {
           await deleteDoc(doc(db, "issues", docSnap.id));
           count++;
         }
@@ -1025,15 +1021,11 @@ export async function cleanupSanFranciscoIssues(): Promise<number> {
       
       // Also cleanup local storage
       const localIssues = getLocalData<Issue[]>(LOCAL_ISSUES_KEY, []);
-      const filtered = localIssues.filter(i => {
-        const addr = (i.address || "").toLowerCase();
-        return !(addr.includes("san francisco") || 
-                (i.latitude > 37.6 && i.latitude < 37.9 && 
-                 i.longitude > -122.6 && i.longitude < -122.3));
-      });
+      const dummyNames = ["Sarah Connor", "Officer David Miller", "Admin Chief"];
+      const filtered = localIssues.filter(i => !dummyNames.includes(i.reporterName));
       setLocalData(LOCAL_ISSUES_KEY, filtered);
       
-      console.log(`Cleaned up ${count} San Francisco issues from database.`);
+      console.log(`Cleaned up ${count} dummy issues from database.`);
     } catch (err) {
       console.error("Cleanup failed", err);
     }

@@ -518,11 +518,11 @@ export default function App() {
 
   // Load Issues (Real-time) and Auth Session on Mount
   useEffect(() => {
-    // Perform cleanup of legacy San Francisco dummy data (one-time)
-    const cleanupDone = localStorage.getItem("sf_cleanup_performed");
+    // Perform cleanup of legacy dummy data (one-time)
+    const cleanupDone = localStorage.getItem("dummy_cleanup_performed");
     if (!cleanupDone) {
       cleanupSanFranciscoIssues().then(() => {
-        localStorage.setItem("sf_cleanup_performed", "true");
+        localStorage.setItem("dummy_cleanup_performed", "true");
       });
     }
 
@@ -1201,19 +1201,6 @@ export default function App() {
           {(currentUser?.role === "Administrator") && (
             <div className="relative flex gap-2">
               <button
-                onClick={async () => {
-                  if (confirm("Are you sure you want to remove all issues reported by Officer David Miller?")) {
-                    const count = await deleteIssuesByReporter("Officer David Miller");
-                    alert(`Deleted ${count} issues reported by Officer David Miller.`);
-                  }
-                }}
-                className="p-2 bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 rounded-xl transition cursor-pointer flex items-center justify-center shadow-xs"
-                title="Remove David Miller Issues"
-              >
-                <Trash2 className="w-4.5 h-4.5" />
-              </button>
-              
-              <button
                 onClick={() => setShowNotificationDropdown(!showNotificationDropdown)}
                 className="relative p-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 hover:border-slate-300 text-slate-600 hover:text-slate-800 rounded-xl transition cursor-pointer flex items-center justify-center shadow-xs"
                 title="Admin Alerts"
@@ -1377,7 +1364,7 @@ export default function App() {
             <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
               <div>
                 <div className="text-xs font-semibold text-slate-500 uppercase mb-1">Total Community Issues</div>
-                <div className="text-2xl font-extrabold text-slate-900">{issues.length} Cases</div>
+                <div className="text-2xl font-extrabold text-slate-900">{filteredIssues.length} Cases</div>
               </div>
               <div className="text-xs text-blue-600 font-medium mt-1.5 flex items-center justify-between">
                 <span>Active Feed Layer</span>
