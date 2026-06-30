@@ -26,6 +26,7 @@ export default function GamePanel({ issues, currentUser, onGoToReport }: GamePan
   const [selectedTriviaAnswer, setSelectedTriviaAnswer] = useState<number | null>(null);
   const [triviaScore, setTriviaScore] = useState(0);
   const [triviaFinished, setTriviaFinished] = useState(false);
+  const [activeQuestions, setActiveQuestions] = useState<any[]>([]);
 
   // Real user reports count for Motivation
   const userReportsCount = useMemo(() => {
@@ -537,7 +538,7 @@ export default function GamePanel({ issues, currentUser, onGoToReport }: GamePan
     ]
   };
 
-  const currentQuestions = difficulty ? triviaQuestions[difficulty] : [];
+  const currentQuestions = activeQuestions;
 
   const handleAnswerTrivia = (idx: number) => {
     if (selectedTriviaAnswer !== null || !difficulty) return;
@@ -557,6 +558,16 @@ export default function GamePanel({ issues, currentUser, onGoToReport }: GamePan
   };
 
   const startLevel = (lvl: "easy" | "medium" | "hard") => {
+    const questions = [...triviaQuestions[lvl]];
+    for (let i = questions.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const temp = questions[i];
+      questions[i] = questions[j];
+      questions[j] = temp;
+    }
+    const selected = questions.slice(0, 10);
+    setActiveQuestions(selected);
+
     setDifficulty(lvl);
     setCurrentTriviaIndex(0);
     setSelectedTriviaAnswer(null);
@@ -566,6 +577,7 @@ export default function GamePanel({ issues, currentUser, onGoToReport }: GamePan
 
   const resetTrivia = () => {
     setDifficulty(null);
+    setActiveQuestions([]);
     setCurrentTriviaIndex(0);
     setSelectedTriviaAnswer(null);
     setTriviaScore(0);

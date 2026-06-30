@@ -4,10 +4,11 @@
  */
 
 import React, { useState, useEffect } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMap, Circle } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, useMap, Circle, Polygon, Tooltip } from "react-leaflet";
 import L from "leaflet";
 import { Issue } from "../types";
-import { MapPin, Compass, Search, Activity, AlertTriangle, Info } from "lucide-react";
+import { MapPin, Compass, Search, Activity, AlertTriangle, Info, ShieldAlert } from "lucide-react";
+import { SF_DISTRICTS, calculateDistrictHealth, getHealthColor, getDistricts } from "../utils/districtUtils";
 
 // Fix for default marker icons in Leaflet with Vite/React
 // @ts-ignore
@@ -42,9 +43,31 @@ function ChangeView({ center, zoom }: { center: [number, number]; zoom: number }
 
 export default function IssueMap({ issues, onSelectIssue, onViewDetails, selectedIssueId }: IssueMapProps) {
   const [mapMode, setMapMode] = useState<"standard" | "alarming">("standard");
+  const [showHealthZones, setShowHealthZones] = useState(true);
+  const [showPins, setShowPins] = useState(true);
+  const [justResolvedId, setJustResolvedId] = useState<string | null>(null);
+  const prevStatusesRef = React.useRef<Record<string, string>>({});
+
+  useEffect(() => {
+    issues.forEach(issue => {
+      const prevStatus = prevStatusesRef.current[issue.id];
+      if (prevStatus && prevStatus !== "Resolved" && issue.status === "Resolved") {
+        setJustResolvedId(issue.id);
+        const timer = setTimeout(() => {
+          setJustResolvedId(null);
+        }, 8000);
+      }
+      prevStatusesRef.current[issue.id] = issue.status;
+    });
+  }, [issues]);
+
   const [searchQuery, setSearchQuery] = useState("");
-  const [viewCenter, setViewCenter] = useState<[number, number]>([37.7749, -122.4194]); // SF default fallback center
-  const [viewZoom, setViewZoom] = useState(12);
+  const [viewCenter, setViewCenter] = useState<[number, number]>([20.5937, 78.9629]); // India default fallback center
+  const [viewZoom, setViewZoom] = useState(5);
+
+  const activeDistricts = React.useMemo(() => {
+    return getDistricts(viewCenter);
+  }, [viewCenter]);
 
   // User/Citizen location states
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
@@ -95,10 +118,10 @@ export default function IssueMap({ issues, onSelectIssue, onViewDetails, selecte
         // Fallback: If we have issues, center on the first issue's coordinates
         if (issues.length > 0) {
           setViewCenter([issues[0].latitude, issues[0].longitude]);
-          setViewZoom(12);
+          setViewZoom(issues[0].latitude > 5 && issues[0].latitude < 38 && issues[0].longitude > 65 && issues[0].longitude < 98 ? 10 : 12);
         } else {
-          setViewCenter([37.7749, -122.4194]);
-          setViewZoom(12);
+          setViewCenter([20.5937, 78.9629]);
+          setViewZoom(5);
         }
       },
       { enableHighAccuracy: true, timeout: 8000 }
@@ -245,33 +268,79 @@ export default function IssueMap({ issues, onSelectIssue, onViewDetails, selecte
           </p>
         </div>
 
-        <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200/80 shrink-0 self-start md:self-auto">
-          <button
-            onClick={() => setMapMode("standard")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              mapMode === "standard"
-                ? "bg-white text-slate-900 shadow-xs border border-slate-200 font-bold"
-                : "text-slate-500 hover:text-slate-800"
-            }`}
-          >
-            Standard
-          </button>
-          <button
-            onClick={() => setMapMode("alarming")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              mapMode === "alarming"
-                ? "bg-white text-slate-900 shadow-xs border border-slate-200 font-bold"
-                : "text-slate-500 hover:text-slate-800"
-            }`}
-          >
-            Alarming Areas
-          </button>
+        <div className="flex flex-wrap items-center gap-3.5 shrink-0 self-start md:self-auto">
+          {/* Base Map Mode */}
+          <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200/80 shrink-0">
+            <button
+              onClick={() => setMapMode("standard")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                mapMode === "standard"
+                  ? "bg-white text-slate-900 shadow-xs border border-slate-200 font-bold"
+                  : "text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              Standard
+            </button>
+            <button
+              onClick={() => setMapMode("alarming")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                mapMode === "alarming"
+                  ? "bg-white text-slate-900 shadow-xs border border-slate-200 font-bold"
+                  : "text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              Alarming Areas
+            </button>
+          </div>
+
+          {/* Living City Overlays Toggle */}
+          <div className="flex items-center gap-3 bg-slate-100 p-1.5 rounded-xl border border-slate-200/80 text-xs">
+            <label className="flex items-center gap-1.5 font-bold text-slate-700 cursor-pointer select-none px-2 py-1 hover:bg-white rounded-lg transition-all">
+              <input
+                type="checkbox"
+                checked={showPins}
+                onChange={(e) => setShowPins(e.target.checked)}
+                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500/20"
+              />
+              <span>Pins</span>
+            </label>
+            <div className="w-px h-3.5 bg-slate-200" />
+            <label className="flex items-center gap-1.5 font-bold text-slate-700 cursor-pointer select-none px-2 py-1 hover:bg-white rounded-lg transition-all">
+              <input
+                type="checkbox"
+                checked={showHealthZones}
+                onChange={(e) => setShowHealthZones(e.target.checked)}
+                className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500/20"
+              />
+              <span className="flex items-center gap-1">
+                🏡 Living City
+              </span>
+            </label>
+          </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12">
         {/* Leaflet Map Area */}
         <div className="lg:col-span-8 relative bg-slate-100 border-r border-slate-200" style={{ height: "500px" }}>
+          <style dangerouslySetInnerHTML={{ __html: `
+            .district-health-polygon {
+              transition: fill 800ms ease-in-out, fill-opacity 800ms ease-in-out, stroke 800ms ease-in-out;
+            }
+            .district-health-polygon:hover {
+              fill-opacity: 0.55 !important;
+              stroke-width: 3px !important;
+            }
+            @keyframes pulseGlow {
+              0% { transform: scale(1); opacity: 0.9; }
+              50% { transform: scale(1.4); opacity: 0.3; }
+              100% { transform: scale(1); opacity: 0.9; }
+            }
+            .resolved-pulse-glow {
+              animation: pulseGlow 1.8s ease-out infinite;
+            }
+          `}} />
+          
           <MapContainer 
             center={viewCenter} 
             zoom={viewZoom} 
@@ -284,6 +353,93 @@ export default function IssueMap({ issues, onSelectIssue, onViewDetails, selecte
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
             
+            {/* Living City Health Overlays */}
+            {showHealthZones && activeDistricts.map((district) => {
+              const report = calculateDistrictHealth(district.id, issues, activeDistricts);
+              const healthColor = getHealthColor(report.score);
+              return (
+                <Polygon
+                  key={district.id}
+                  positions={district.polygon}
+                  pathOptions={{
+                    fillColor: healthColor.hex,
+                    fillOpacity: 0.32,
+                    color: healthColor.hex,
+                    weight: report.atRisk ? 2.5 : 1.2,
+                    dashArray: report.atRisk ? "5, 5" : undefined,
+                    className: "district-health-polygon"
+                  }}
+                >
+                  <Tooltip sticky>
+                    <div className="p-2 font-sans text-xs max-w-[240px]">
+                      <div className="flex items-center gap-1.5 border-b border-slate-100 pb-1 mb-1.5 justify-between">
+                        <span className="font-extrabold text-slate-800 text-xs">{district.name}</span>
+                        <span className={`font-bold px-1.5 py-0.5 rounded text-[8px] uppercase tracking-wide ${
+                          report.atRisk 
+                            ? "bg-rose-100 text-rose-700 animate-pulse" 
+                            : "bg-emerald-100 text-emerald-700"
+                        }`}>
+                          {report.atRisk ? "at risk" : "stabel"}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="text-slate-500 font-medium">Health Score:</span>
+                        <span className={`font-extrabold px-1.5 py-0.5 rounded text-[10px] ${healthColor.twBg} ${healthColor.twText} ${healthColor.twBorder} border`}>
+                          {report.score}% ({healthColor.label})
+                        </span>
+                      </div>
+                      <div className="mt-1.5 flex items-center justify-between gap-4 text-[10px] text-slate-500">
+                        <span>Active reports: <b>{report.openIssuesCount}</b></span>
+                        <span>Resolved: <b>{report.resolvedIssuesCount}</b></span>
+                      </div>
+                      {report.resolvedIssuesCount > 0 && (
+                        <div className="mt-1 text-[9px] font-mono text-slate-400">
+                          Avg Dispatch Time: {report.avgResolveTimeHours.toFixed(1)}h
+                        </div>
+                      )}
+                      {report.riskAlertSummary && (
+                        <div className={`mt-2 border p-1.5 rounded text-[9px] flex gap-1.5 items-start leading-relaxed ${
+                          report.atRisk 
+                            ? "bg-rose-50 border-rose-100 text-rose-700 animate-pulse" 
+                            : "bg-emerald-50 border-emerald-100 text-emerald-700"
+                        }`}>
+                          <ShieldAlert className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${
+                            report.atRisk ? "text-rose-600" : "text-emerald-600"
+                          }`} />
+                          <div>
+                            <span className={`font-extrabold block leading-none mb-0.5 ${
+                              report.atRisk ? "text-rose-800" : "text-emerald-800"
+                            }`}>Gemini Risk Assessment</span>
+                            <p className="text-slate-600 font-medium leading-normal">{report.riskAlertSummary}</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </Tooltip>
+                </Polygon>
+              );
+            })}
+
+            {/* Brief Resolution Reward Pulse */}
+            {justResolvedId && (() => {
+              const issue = issues.find(i => i.id === justResolvedId);
+              if (!issue) return null;
+              return (
+                <Circle
+                  center={[issue.latitude, issue.longitude]}
+                  radius={180}
+                  pathOptions={{
+                    fillColor: '#10b981',
+                    color: '#059669',
+                    weight: 2,
+                    opacity: 0.9,
+                    fillOpacity: 0.4,
+                    className: "resolved-pulse-glow"
+                  }}
+                />
+              );
+            })()}
+
             {/* Alarming Areas (Heat-like circles) */}
             {mapMode === "alarming" && alarmingAreas.map((area, idx) => (
               <Circle
@@ -323,7 +479,7 @@ export default function IssueMap({ issues, onSelectIssue, onViewDetails, selecte
             )}
 
             {/* Issue Markers */}
-            {filteredIssues.map((issue) => (
+            {showPins && filteredIssues.map((issue) => (
               <Marker 
                 key={issue.id} 
                 position={[issue.latitude, issue.longitude]}

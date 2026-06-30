@@ -348,7 +348,7 @@ Do not include any explanation, conversational text or markdown codeblocks outsi
 
 // 4. AI Predictive Analytics mapping endpoint
 app.post("/api/generate-predictive-map", async (req: any, res: any) => {
-  const { currentIssues } = req.body; // array of current issue structures
+  const { currentIssues, cityCenter } = req.body; // array of current issue structures and [lat, lng] center
 
   try {
     const ai = getGeminiClient();
@@ -359,21 +359,26 @@ app.post("/api/generate-predictive-map", async (req: any, res: any) => {
       severity: i.severity
     }))) : "[]";
 
+    const cityContext = cityCenter 
+      ? `This represents issues only in the citizen's current city centered around coordinates [${cityCenter[0].toFixed(4)}, ${cityCenter[1].toFixed(4)}]. Focus your predictions ONLY on this local metropolitan zone.`
+      : "Focus your predictions on the local area where these issues are clustered.";
+
     const prompt = `
 You are the AI Predictive Urban Planner for "Community Hero".
-Based on this raw civic issue distribution, predict three potential high-risk zones/wards where future infrastructure failure is probabilistic.
+${cityContext}
+Based on this raw civic issue distribution within this specific city, predict three potential high-risk zones/wards where future infrastructure failure is probabilistic.
 
-Raw Issues list:
+Raw Issues list in current city:
 ${issueSummary}
 
 Provide a structured JSON output with three high-risk forecasts:
 {
   "forecasts": [
     {
-      "wardName": "Ward 4 (Downtown Grid)",
+      "wardName": "Central Ward (City Core)",
       "hazardType": "Garbage Overflow / Drainage Clog Risk",
       "probability": 85,
-      "factors": "Compounding effect of water leakage issues near high garbage density areas.",
+      "factors": "Compounding effect of water leakage issues near high garbage density areas in the local city.",
       "preventativeAction": "Schedule preventative storm drain cleanouts and place additional municipal bins."
     }
   ]

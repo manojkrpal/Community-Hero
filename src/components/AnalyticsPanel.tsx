@@ -14,9 +14,11 @@ import {
   Map, 
   AlertTriangle,
   Lightbulb,
-  CheckCircle2
+  CheckCircle2,
+  Heart
 } from "lucide-react";
 import { motion } from "motion/react";
+import { calculateCitywideHealth, getHealthColor, getActiveCityCenter } from "../utils/districtUtils";
 
 interface AnalyticsPanelProps {
   issues: Issue[];
@@ -32,10 +34,21 @@ export default function AnalyticsPanel({ issues }: AnalyticsPanelProps) {
     async function loadForecasts() {
       try {
         setLoadingForecasts(true);
+        const center = getActiveCityCenter(issues);
+        // Filter issues to only focus on the current city of the citizen (within ~20km / 0.18 degrees)
+        const cityIssues = issues.filter(i => {
+          const latDiff = i.latitude - center[0];
+          const lngDiff = i.longitude - center[1];
+          return Math.sqrt(latDiff * latDiff + lngDiff * lngDiff) <= 0.18;
+        });
+
         const response = await fetch("/api/generate-predictive-map", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ currentIssues: issues })
+          body: JSON.stringify({ 
+            currentIssues: cityIssues,
+            cityCenter: center
+          })
         });
         const data = await response.json();
         if (data.success && data.forecasts) {
@@ -115,7 +128,7 @@ export default function AnalyticsPanel({ issues }: AnalyticsPanelProps) {
       {activeTab === "charts" ? (
         <div className="space-y-6">
           {/* Key Metric cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl flex items-center gap-3">
               <div className="w-10 h-10 bg-blue-50 text-blue-600 border border-blue-200 rounded-lg flex items-center justify-center font-bold">
                 {totalReported}
@@ -157,6 +170,28 @@ export default function AnalyticsPanel({ issues }: AnalyticsPanelProps) {
                 </span>
               </div>
             </div>
+
+            {/* City Health Index Indicator Card */}
+            {(() => {
+              const cityScore = calculateCitywideHealth(issues);
+              const healthColor = getHealthColor(cityScore);
+              return (
+                <div className={`p-4 rounded-xl flex items-center gap-3 border ${healthColor.twBg} ${healthColor.twBorder}`}>
+                  <div className={`w-12 h-10 rounded-lg flex items-center justify-center font-extrabold border ${healthColor.twBg} ${healthColor.twText} ${healthColor.twBorder} text-sm shrink-0`}>
+                    {cityScore}%
+                  </div>
+                  <div>
+                    <span className={`block text-[10px] uppercase font-bold tracking-wider ${healthColor.twText}`}>
+                      City Health Index
+                    </span>
+                    <span className="text-slate-800 font-extrabold text-[13px] flex items-center gap-1">
+                      <Heart className="w-3.5 h-3.5 text-rose-500 animate-pulse shrink-0 fill-rose-500" />
+                      Status: {healthColor.label}
+                    </span>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

@@ -37,12 +37,25 @@ L.Icon.Default.mergeOptions({
 });
 
 // Map click handler component
-function MapEvents({ onLocationSelect }: { onLocationSelect: (lat: number, lng: number) => void }) {
-  useMapEvents({
+function MapEvents({ 
+  onLocationSelect, 
+  center, 
+  zoom 
+}: { 
+  onLocationSelect: (lat: number, lng: number) => void; 
+  center: [number, number]; 
+  zoom: number; 
+}) {
+  const map = useMapEvents({
     click(e) {
       onLocationSelect(e.latlng.lat, e.latlng.lng);
     },
   });
+
+  useEffect(() => {
+    map.setView(center, zoom);
+  }, [center, zoom, map]);
+
   return null;
 }
 
@@ -56,8 +69,9 @@ export default function ReportIssueForm({ onSuccess, onCancel, currentUser }: Re
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [address, setAddress] = useState("");
-  const [latitude, setLatitude] = useState(0);
-  const [longitude, setLongitude] = useState(0);
+  const [latitude, setLatitude] = useState(20.5937);
+  const [longitude, setLongitude] = useState(78.9629);
+  const [mapZoom, setMapZoom] = useState(5);
   const [image, setImage] = useState<string | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   
@@ -93,17 +107,19 @@ export default function ReportIssueForm({ onSuccess, onCancel, currentUser }: Re
         (position) => {
           setLatitude(position.coords.latitude);
           setLongitude(position.coords.longitude);
+          setMapZoom(14);
           // Reverse-geocoding simulation
-          setAddress(`Near Coordinate Grid: ${position.coords.latitude.toFixed(4)}°N, ${position.coords.longitude.toFixed(4)}°W`);
+          setAddress(`Near Coordinate Grid: ${position.coords.latitude.toFixed(4)}°N, ${position.coords.longitude.toFixed(4)}°E`);
         },
         (err) => {
           console.warn("Geolocation permission declined, placing pin on standard Municipal center.", err);
           // Use current coordinates or default
-          const mockLat = latitude || 0;
-          const mockLng = longitude || 0;
+          const mockLat = latitude === 0 ? 20.5937 : latitude;
+          const mockLng = longitude === 0 ? 78.9629 : longitude;
           setLatitude(mockLat);
           setLongitude(mockLng);
-          setAddress(`City Hall District Area (Geocoded fallback)`);
+          setMapZoom(5);
+          setAddress(`India Municipal Area (Fallback)`);
         }
       );
     }
@@ -388,7 +404,7 @@ export default function ReportIssueForm({ onSuccess, onCancel, currentUser }: Re
             <div className="h-48 rounded-xl overflow-hidden border border-slate-200 shadow-inner relative z-0">
               <MapContainer 
                 center={[latitude, longitude]} 
-                zoom={14} 
+                zoom={mapZoom} 
                 style={{ height: "100%", width: "100%" }}
                 scrollWheelZoom={false}
               >
@@ -410,10 +426,15 @@ export default function ReportIssueForm({ onSuccess, onCancel, currentUser }: Re
                     iconAnchor: [15, 30]
                   })}
                 />
-                <MapEvents onLocationSelect={(lat, lng) => {
-                  setLatitude(lat);
-                  setLongitude(lng);
-                }} />
+                <MapEvents 
+                  onLocationSelect={(lat, lng) => {
+                    setLatitude(lat);
+                    setLongitude(lng);
+                    setMapZoom(14);
+                  }} 
+                  center={[latitude, longitude]}
+                  zoom={mapZoom}
+                />
               </MapContainer>
               <div className="absolute bottom-2 right-2 z-[1000] bg-white/90 backdrop-blur px-2 py-1 rounded-md text-[9px] font-bold text-blue-600 border border-blue-100 shadow-sm pointer-events-none">
                 Click map to move pin
