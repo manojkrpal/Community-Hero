@@ -79,6 +79,7 @@ export interface Issue {
   materialsRequired?: string[];
   safetyPrecautions?: string[];
   estimatedHours?: number;
+  estimatedResolutionTime?: string;
   resolutionNotes?: string;
   resolutionImageUrl?: string;
   completedImageUrl?: string;

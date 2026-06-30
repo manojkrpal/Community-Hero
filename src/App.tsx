@@ -33,6 +33,7 @@ import IssueMap from "./components/IssueMap";
 import ReportIssueForm from "./components/ReportIssueForm";
 import AnalyticsPanel from "./components/AnalyticsPanel";
 import LeaderboardPanel from "./components/LeaderboardPanel";
+import GamePanel from "./components/GamePanel";
 import AuthPage from "./components/AuthPage";
 import { 
   MapPin, 
@@ -134,11 +135,24 @@ export default function App() {
 
   // UI States
   const [showReportForm, setShowReportForm] = useState(false);
-  const [activeTab, setActiveTab] = useState<"feed" | "my-issues" | "stats" | "map" | "admin" | "leaderboard">("feed");
+  const [activeTab, setActiveTab] = useState<"feed" | "my-issues" | "stats" | "map" | "admin" | "leaderboard" | "game">("feed");
+
+  useEffect(() => {
+    if (currentUser && !["Citizen", "Guest", "Volunteer"].includes(currentUser.role) && activeTab === "game") {
+      setActiveTab("feed");
+    }
+  }, [currentUser, activeTab]);
+
   const [adminSubTab, setAdminSubTab] = useState<"pending" | "verified" | "inprogress" | "resolved" | "requests">("pending");
   const [municipalitySubTab, setMunicipalitySubTab] = useState<"solved" | "inprogress" | "verified">("verified");
   const [citizenSubTab, setCitizenSubTab] = useState<"solved" | "inprogress" | "verified">("inprogress");
   const [communitySubTab, setCommunitySubTab] = useState<"solved" | "inprogress" | "verified">("inprogress");
+  const [deptSubTab, setDeptSubTab] = useState<"transferred" | "inprogress" | "solved">("transferred");
+
+  // Estimation state for Department Crew
+  const [estDays, setEstDays] = useState<string>("");
+  const [estHours, setEstHours] = useState<string>("");
+  const [savingEstimation, setSavingEstimation] = useState<boolean>(false);
   
   // Filters for My Issues
   const [myCategoryFilter, setMyCategoryFilter] = useState("All");
@@ -598,6 +612,9 @@ export default function App() {
         setCompletionNotes("");
         setOnDemandDeptSuggestion(null);
         setIsEditingIssue(false);
+        setEstDays("");
+        setEstHours("");
+        setSavingEstimation(false);
       }
       loadDetails();
     }
@@ -807,6 +824,42 @@ export default function App() {
       console.error("Error completing task:", err);
     } finally {
       setSubmittingCompletion(false);
+    }
+  };
+
+  // Save estimated resolution time for Department Crew
+  const handleSaveEstimation = async (issueId: string, days: string, hours: string) => {
+    if (!currentUser) return;
+    setSavingEstimation(true);
+    try {
+      const formattedTime = `${days || "0"} days, ${hours || "0"} hours`;
+      const updates: Partial<Issue> = {
+        estimatedResolutionTime: formattedTime,
+        updatedAt: new Date().toISOString()
+      };
+      await updateIssue(issueId, updates);
+      
+      // Log to audit log timeline
+      await logTimelineUpdate(
+        issueId,
+        currentUser.uid,
+        currentUser.name,
+        currentUser.role,
+        selectedIssue?.status || "In Progress",
+        selectedIssue?.status || "In Progress",
+        `Set estimated resolution time to ${formattedTime}.`
+      );
+
+      const updatedList = await fetchIssues();
+      setIssues(updatedList);
+      const updatedIssue = updatedList.find(i => i.id === issueId);
+      if (updatedIssue) {
+        setSelectedIssue(updatedIssue);
+      }
+    } catch (err) {
+      console.error("Error saving estimation:", err);
+    } finally {
+      setSavingEstimation(false);
     }
   };
 
@@ -1066,6 +1119,14 @@ export default function App() {
             >
               Leaderboard
             </button>
+            {(!currentUser || ["Citizen", "Guest", "Volunteer"].includes(currentUser.role)) && (
+              <button 
+                onClick={() => setActiveTab("game")} 
+                className={`py-5 transition-colors border-b-2 hover:text-slate-950 ${activeTab === "game" ? "text-blue-600 border-blue-600 font-bold" : "border-transparent"}`}
+              >
+                Gaming Arena
+              </button>
+            )}
           </div>
         </div>
 
@@ -1332,6 +1393,18 @@ export default function App() {
             >
               Leaderboard
             </button>
+            {(!currentUser || ["Citizen", "Guest", "Volunteer"].includes(currentUser.role)) && (
+              <button
+                onClick={() => setActiveTab("game")}
+                className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+                  activeTab === "game" 
+                    ? "bg-blue-600 text-white shadow-sm" 
+                    : "text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                Games
+              </button>
+            )}
           </div>
 
           {/* Tab Renderers */}
@@ -1543,6 +1616,68 @@ export default function App() {
                   </button>
                 </div>
               )})()}
+
+              {/* Department Crew Workspace Navigation */}
+              {isDeptOfficer && (() => {
+                const deptIssuesFilteredBase = issues.filter(issue => {
+                  return issue.assignedDepartment === currentUser?.department;
+                });
+
+                return (
+                  <div className="bg-indigo-50/50 border border-indigo-100 p-2 rounded-2xl flex flex-wrap gap-2 shadow-2xs mt-2">
+                    <div className="w-full px-2 py-1 text-[10px] font-bold text-indigo-500 uppercase tracking-widest flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <Building className="w-3.5 h-3.5 text-indigo-600" /> {currentUser?.department || "Department"} Crew Workspace
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => setDeptSubTab("transferred")}
+                      className={`flex-1 min-w-[140px] px-3.5 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                        deptSubTab === "transferred"
+                          ? "bg-indigo-600 text-white shadow-sm"
+                          : "bg-white text-slate-600 hover:bg-indigo-50/50 hover:text-slate-800 border border-slate-200/60"
+                      }`}
+                    >
+                      <Building className="w-3.5 h-3.5" />
+                      <span>Transferred by Municipality</span>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${deptSubTab === "transferred" ? "bg-white text-indigo-700 font-bold" : "bg-indigo-50 text-indigo-600"}`}>
+                        {deptIssuesFilteredBase.filter(issue => ["Assigned", "Accepted", "Verified"].includes(issue.status)).length}
+                      </span>
+                    </button>
+
+                    <button
+                      onClick={() => setDeptSubTab("inprogress")}
+                      className={`flex-1 min-w-[140px] px-3.5 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                        deptSubTab === "inprogress"
+                          ? "bg-amber-500 text-white shadow-sm"
+                          : "bg-white text-slate-600 hover:bg-amber-50 hover:text-slate-800 border border-slate-200/60"
+                      }`}
+                    >
+                      <Clock className="w-3.5 h-3.5" />
+                      <span>Started / In Progress</span>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${deptSubTab === "inprogress" ? "bg-white text-amber-700 font-bold" : "bg-amber-50 text-amber-600"}`}>
+                        {deptIssuesFilteredBase.filter(issue => ["In Progress"].includes(issue.status)).length}
+                      </span>
+                    </button>
+
+                    <button
+                      onClick={() => setDeptSubTab("solved")}
+                      className={`flex-1 min-w-[140px] px-3.5 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                        deptSubTab === "solved"
+                          ? "bg-emerald-600 text-white shadow-sm"
+                          : "bg-white text-slate-600 hover:bg-emerald-50 hover:text-slate-800 border border-slate-200/60"
+                      }`}
+                    >
+                      <CheckCircle className="w-3.5 h-3.5" />
+                      <span>Solved by Us</span>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${deptSubTab === "solved" ? "bg-white text-emerald-700 font-bold" : "bg-emerald-50 text-emerald-600"}`}>
+                        {deptIssuesFilteredBase.filter(issue => ["Completed by Assigned Department", "Resolved", "Citizen Confirmation", "Closed"].includes(issue.status)).length}
+                      </span>
+                    </button>
+                  </div>
+                );
+              })()}
 
               {/* Feed List */}
               {(() => {
@@ -2168,96 +2303,190 @@ export default function App() {
                                     <Building className="w-4 h-4 text-indigo-600" /> Department Action Portal ({currentUser?.department})
                                   </span>
 
-                                  {selectedIssue.status === "Completed by Assigned Department" ? (
+                                  {["Completed by Assigned Department", "Resolved", "Citizen Confirmation", "Closed"].includes(selectedIssue.status) ? (
                                     <div className="bg-emerald-50 border border-emerald-200 p-3.5 rounded-xl text-center space-y-1">
                                       <CheckCircle className="w-6 h-6 text-emerald-600 mx-auto animate-bounce" />
-                                      <h6 className="font-bold text-emerald-800 text-xs">Task Completed & Submitted</h6>
+                                      <h6 className="font-bold text-emerald-800 text-xs">Task Completed & Solved</h6>
                                       <p className="text-[11px] text-slate-500">
-                                        Awaiting final verification by a Municipality Officer.
+                                        This issue is solved. No further action is required from department crew.
                                       </p>
                                       {selectedIssue.completedImageUrl && (
                                         <div className="mt-2 rounded-lg overflow-hidden border border-emerald-200 max-h-36 aspect-video bg-white mx-auto">
                                           <img src={selectedIssue.completedImageUrl} alt="My completed work" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                                         </div>
                                       )}
+                                      {selectedIssue.completedNotes && (
+                                        <p className="text-xs font-medium text-slate-600 bg-white p-2 border border-emerald-100 rounded-lg mt-2 italic">
+                                          "{selectedIssue.completedNotes}"
+                                        </p>
+                                      )}
                                     </div>
-                                  ) : (
-                                    <form onSubmit={handleCompleteByDepartment} className="space-y-3">
-                                      <p className="text-[11px] text-slate-500">
-                                        To mark this incident as complete, you must capture/upload a photograph of the finished repairs and input your completion logs.
-                                      </p>
-
-                                      <div>
-                                        <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
-                                          📸 Upload Completion Photo
-                                        </label>
-                                        {completionPhoto ? (
-                                          <div className="relative rounded-lg overflow-hidden border border-indigo-200 max-h-40 aspect-video bg-slate-50">
-                                            <img src={completionPhoto} alt="Completion Proof" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                  ) : selectedIssue.status === "In Progress" ? (
+                                    <div className="space-y-4">
+                                      {/* Day & Time required to resolve form */}
+                                      <div className="bg-white border border-indigo-100 p-3 rounded-lg space-y-2.5 shadow-2xs text-slate-800">
+                                        <span className="font-bold text-[11px] text-indigo-700 uppercase tracking-wide block">
+                                          ⏱️ Mention Resolution Timeline
+                                        </span>
+                                        <p className="text-[10px] text-slate-500">
+                                          Specify the estimated days and hours required on-the-ground to fully resolve this municipal issue.
+                                        </p>
+                                        
+                                        {selectedIssue.estimatedResolutionTime ? (
+                                          <div className="bg-indigo-50 border border-indigo-100/50 p-2 rounded-lg text-[11px] font-bold text-indigo-800 flex items-center justify-between">
+                                            <span>⏱️ Current Target: {selectedIssue.estimatedResolutionTime}</span>
                                             <button
                                               type="button"
-                                              onClick={() => setCompletionPhoto(null)}
-                                              className="absolute top-2 right-2 p-1.5 bg-slate-900/80 hover:bg-red-600 text-white rounded-lg transition-colors text-[10px] font-bold cursor-pointer"
+                                              onClick={() => {
+                                                const parts = selectedIssue.estimatedResolutionTime?.split(",");
+                                                if (parts && parts.length === 2) {
+                                                  setEstDays(parts[0].trim().split(" ")[0]);
+                                                  setEstHours(parts[1].trim().split(" ")[0]);
+                                                }
+                                              }}
+                                              className="text-[10px] text-indigo-600 hover:underline cursor-pointer"
                                             >
-                                              Remove Photo
+                                              Change
                                             </button>
                                           </div>
                                         ) : (
-                                          <label className="border-2 border-dashed border-indigo-200 hover:border-indigo-400 bg-white rounded-lg p-4 flex flex-col items-center justify-center cursor-pointer transition-all">
-                                            <Upload className="w-5 h-5 text-indigo-500 mb-1" />
-                                            <span className="text-[11px] font-bold text-slate-700">Choose completed task photograph</span>
+                                          <div className="text-[10px] text-rose-500 font-semibold bg-rose-50 p-2 rounded border border-rose-100">
+                                            ⚠️ No timeline specified yet. Please update the crew's estimation.
+                                          </div>
+                                        )}
+
+                                        <div className="flex gap-2.5 items-end">
+                                          <div className="flex-1">
+                                            <label className="block text-[9px] font-black text-slate-500 uppercase mb-1">Days Needed</label>
                                             <input
-                                              type="file"
-                                              accept="image/*"
-                                              required
-                                              onChange={(e) => {
-                                                const file = e.target.files?.[0];
-                                                if (file) {
-                                                  const reader = new FileReader();
-                                                  reader.onloadend = () => {
-                                                    setCompletionPhoto(reader.result as string);
-                                                  };
-                                                  reader.readAsDataURL(file);
-                                                }
-                                              }}
-                                              className="hidden"
+                                              type="number"
+                                              min="0"
+                                              max="30"
+                                              placeholder="e.g. 2"
+                                              value={estDays}
+                                              onChange={(e) => setEstDays(e.target.value)}
+                                              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-800 focus:outline-none focus:bg-white"
                                             />
-                                          </label>
-                                        )}
+                                          </div>
+                                          <div className="flex-1">
+                                            <label className="block text-[9px] font-black text-slate-500 uppercase mb-1">Hours Needed</label>
+                                            <input
+                                              type="number"
+                                              min="0"
+                                              max="23"
+                                              placeholder="e.g. 4"
+                                              value={estHours}
+                                              onChange={(e) => setEstHours(e.target.value)}
+                                              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-800 focus:outline-none focus:bg-white"
+                                            />
+                                          </div>
+                                          <button
+                                            type="button"
+                                            disabled={savingEstimation || (!estDays && !estHours)}
+                                            onClick={() => handleSaveEstimation(selectedIssue.id, estDays, estHours)}
+                                            className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50"
+                                          >
+                                            {savingEstimation ? <Loader2 className="w-3 animate-spin" /> : "Save"}
+                                          </button>
+                                        </div>
                                       </div>
 
-                                      <div className="space-y-1">
-                                        <label className="block text-[10px] font-bold text-slate-500 uppercase">
-                                          Completion Crew Notes
-                                        </label>
-                                        <textarea
-                                          rows={2.5}
-                                          required
-                                          placeholder="Describe materials used, final measurements, and safety checks completed..."
-                                          value={completionNotes}
-                                          onChange={(e) => setCompletionNotes(e.target.value)}
-                                          className="w-full bg-white border border-slate-200 rounded-lg p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500/30"
-                                        />
-                                      </div>
+                                      {/* Completion Form */}
+                                      <div className="border-t border-slate-200/60 pt-3">
+                                        <span className="font-bold text-[11px] text-indigo-700 uppercase tracking-wide block mb-2">
+                                          📸 Complete & Submit Proof
+                                        </span>
+                                        <form onSubmit={handleCompleteByDepartment} className="space-y-3">
+                                          <p className="text-[11px] text-slate-500">
+                                            To mark this incident as complete, you must capture/upload a photograph of the finished repairs and input your completion logs.
+                                          </p>
 
+                                          <div>
+                                            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                                              📸 Upload Completion Photo
+                                            </label>
+                                            {completionPhoto ? (
+                                              <div className="relative rounded-lg overflow-hidden border border-indigo-200 max-h-40 aspect-video bg-slate-50">
+                                                <img src={completionPhoto} alt="Completion Proof" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                                <button
+                                                  type="button"
+                                                  onClick={() => setCompletionPhoto(null)}
+                                                  className="absolute top-2 right-2 p-1.5 bg-slate-900/80 hover:bg-red-600 text-white rounded-lg transition-colors text-[10px] font-bold cursor-pointer"
+                                                >
+                                                  Remove Photo
+                                                </button>
+                                              </div>
+                                            ) : (
+                                              <label className="border-2 border-dashed border-indigo-200 hover:border-indigo-400 bg-white rounded-lg p-4 flex flex-col items-center justify-center cursor-pointer transition-all">
+                                                <Upload className="w-5 h-5 text-indigo-500 mb-1" />
+                                                <span className="text-[11px] font-bold text-slate-700">Choose completed task photograph</span>
+                                                <input
+                                                  type="file"
+                                                  accept="image/*"
+                                                  required
+                                                  onChange={(e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file) {
+                                                      const reader = new FileReader();
+                                                      reader.onloadend = () => {
+                                                        setCompletionPhoto(reader.result as string);
+                                                      };
+                                                      reader.readAsDataURL(file);
+                                                    }
+                                                  }}
+                                                  className="hidden"
+                                                />
+                                              </label>
+                                            )}
+                                          </div>
+
+                                          <div className="space-y-1">
+                                            <label className="block text-[10px] font-bold text-slate-500 uppercase">
+                                              Completion Crew Notes
+                                            </label>
+                                            <textarea
+                                              rows={2.5}
+                                              required
+                                              placeholder="Describe materials used, final measurements, and safety checks completed..."
+                                              value={completionNotes}
+                                              onChange={(e) => setCompletionNotes(e.target.value)}
+                                              className="w-full bg-white border border-slate-200 rounded-lg p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500/30"
+                                            />
+                                          </div>
+
+                                          <button
+                                            type="submit"
+                                            disabled={submittingCompletion || !completionPhoto}
+                                            className={`w-full py-2 text-white text-xs font-bold rounded-lg transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                                              !completionPhoto 
+                                                ? "bg-slate-300 cursor-not-allowed" 
+                                                : "bg-indigo-600 hover:bg-indigo-700 shadow-sm"
+                                            }`}
+                                          >
+                                            {submittingCompletion ? (
+                                              <>
+                                                <Loader2 className="w-3.5 h-3.5 animate-spin" /> Submitting completion proof...
+                                              </>
+                                            ) : (
+                                              <>✓ Submit Completed Task</>
+                                            )}
+                                          </button>
+                                        </form>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="bg-white border border-indigo-150 p-4 rounded-xl text-center space-y-3 shadow-2xs">
+                                      <p className="text-[11px] text-slate-500 leading-normal">
+                                        This issue was transferred (routed) to your department crew by city dispatchers. Accept this ticket to dispatch crews and start active restoration works.
+                                      </p>
                                       <button
-                                        type="submit"
-                                        disabled={submittingCompletion || !completionPhoto}
-                                        className={`w-full py-2 text-white text-xs font-bold rounded-lg transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                                          !completionPhoto 
-                                            ? "bg-slate-300 cursor-not-allowed" 
-                                            : "bg-indigo-600 hover:bg-indigo-700 shadow-sm"
-                                        }`}
+                                        type="button"
+                                        onClick={() => handleStatusChange("In Progress", "Department crew accepted this municipal repair ticket. Crew dispatched with materials.")}
+                                        className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg shadow-sm transition active:scale-98 cursor-pointer"
                                       >
-                                        {submittingCompletion ? (
-                                          <>
-                                            <Loader2 className="w-3.5 h-3.5 animate-spin" /> Submitting completion proof...
-                                          </>
-                                        ) : (
-                                          <>✓ Submit Completed Task</>
-                                        )}
+                                        ⚙️ Accept & Start Repair Work
                                       </button>
-                                    </form>
+                                    </div>
                                   )}
                                 </div>
                               )}
@@ -2932,7 +3161,33 @@ export default function App() {
                   );
                 }
 
-                // Regular Officer View
+                // Regular Officer / Department Crew View
+                if (isDeptOfficer) {
+                  let deptFilteredIssues = filteredIssues;
+                  if (deptSubTab === "transferred") {
+                    deptFilteredIssues = filteredIssues.filter(issue => ["Assigned", "Accepted", "Verified"].includes(issue.status));
+                  } else if (deptSubTab === "inprogress") {
+                    deptFilteredIssues = filteredIssues.filter(issue => ["In Progress"].includes(issue.status));
+                  } else if (deptSubTab === "solved") {
+                    deptFilteredIssues = filteredIssues.filter(issue => ["Completed by Assigned Department", "Resolved", "Citizen Confirmation", "Closed"].includes(issue.status));
+                  }
+
+                  if (deptFilteredIssues.length === 0) {
+                    return (
+                      <div className="bg-white border border-slate-100 rounded-3xl p-12 text-center text-slate-400 text-sm">
+                        No issues found in this {currentUser?.department || "Department"} workspace section.
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="grid grid-cols-1 gap-4">
+                      {deptFilteredIssues.map(issue => renderIssueCard(issue))}
+                    </div>
+                  );
+                }
+
+                // Fallback / Regular Officer View
                 return (
                   <div className="grid grid-cols-1 gap-4">
                     {filteredIssues.map(issue => renderIssueCard(issue))}
@@ -2999,6 +3254,18 @@ export default function App() {
 
           {activeTab === "leaderboard" && (
             <LeaderboardPanel issues={issues} currentUser={currentUser} />
+          )}
+
+          {activeTab === "game" && (!currentUser || ["Citizen", "Guest", "Volunteer"].includes(currentUser.role)) && (
+            <GamePanel 
+              issues={issues} 
+              currentUser={currentUser} 
+              onGoToReport={() => {
+                setActiveTab("feed");
+                setShowReportForm(true);
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+            />
           )}
 
         </div>
@@ -3429,96 +3696,190 @@ export default function App() {
                         <Building className="w-4 h-4 text-indigo-600" /> Department Action Portal ({currentUser?.department})
                       </span>
 
-                      {selectedIssue.status === "Completed by Assigned Department" ? (
+                      {["Completed by Assigned Department", "Resolved", "Citizen Confirmation", "Closed"].includes(selectedIssue.status) ? (
                         <div className="bg-emerald-50 border border-emerald-200 p-3.5 rounded-xl text-center space-y-1">
                           <CheckCircle className="w-6 h-6 text-emerald-600 mx-auto animate-bounce" />
-                          <h6 className="font-bold text-emerald-800 text-xs">Task Completed & Submitted</h6>
+                          <h6 className="font-bold text-emerald-800 text-xs">Task Completed & Solved</h6>
                           <p className="text-[11px] text-slate-500">
-                            Awaiting final verification by a Municipality Officer.
+                            This issue is solved. No further action is required from department crew.
                           </p>
                           {selectedIssue.completedImageUrl && (
                             <div className="mt-2 rounded-lg overflow-hidden border border-emerald-200 max-h-36 aspect-video bg-white mx-auto">
                               <img src={selectedIssue.completedImageUrl} alt="My completed work" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                             </div>
                           )}
+                          {selectedIssue.completedNotes && (
+                            <p className="text-xs font-medium text-slate-600 bg-white p-2 border border-emerald-100 rounded-lg mt-2 italic">
+                              "{selectedIssue.completedNotes}"
+                            </p>
+                          )}
                         </div>
-                      ) : (
-                        <form onSubmit={handleCompleteByDepartment} className="space-y-3">
-                          <p className="text-[11px] text-slate-500">
-                            To mark this incident as complete, you must capture/upload a photograph of the finished repairs and input your completion logs.
-                          </p>
-
-                          <div>
-                            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
-                              📸 Upload Completion Photo
-                            </label>
-                            {completionPhoto ? (
-                              <div className="relative rounded-lg overflow-hidden border border-indigo-200 max-h-40 aspect-video bg-slate-50">
-                                <img src={completionPhoto} alt="Completion Proof" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      ) : selectedIssue.status === "In Progress" ? (
+                        <div className="space-y-4">
+                          {/* Day & Time required to resolve form */}
+                          <div className="bg-white border border-indigo-100 p-3 rounded-lg space-y-2.5 shadow-2xs text-slate-800">
+                            <span className="font-bold text-[11px] text-indigo-700 uppercase tracking-wide block">
+                              ⏱️ Mention Resolution Timeline
+                            </span>
+                            <p className="text-[10px] text-slate-500">
+                              Specify the estimated days and hours required on-the-ground to fully resolve this municipal issue.
+                            </p>
+                            
+                            {selectedIssue.estimatedResolutionTime ? (
+                              <div className="bg-indigo-50 border border-indigo-100/50 p-2 rounded-lg text-[11px] font-bold text-indigo-800 flex items-center justify-between">
+                                <span>⏱️ Current Target: {selectedIssue.estimatedResolutionTime}</span>
                                 <button
                                   type="button"
-                                  onClick={() => setCompletionPhoto(null)}
-                                  className="absolute top-2 right-2 p-1.5 bg-slate-900/80 hover:bg-red-600 text-white rounded-lg transition-colors text-[10px] font-bold cursor-pointer"
+                                  onClick={() => {
+                                    const parts = selectedIssue.estimatedResolutionTime?.split(",");
+                                    if (parts && parts.length === 2) {
+                                      setEstDays(parts[0].trim().split(" ")[0]);
+                                      setEstHours(parts[1].trim().split(" ")[0]);
+                                    }
+                                  }}
+                                  className="text-[10px] text-indigo-600 hover:underline cursor-pointer"
                                 >
-                                  Remove Photo
+                                  Change
                                 </button>
                               </div>
                             ) : (
-                              <label className="border-2 border-dashed border-indigo-200 hover:border-indigo-400 bg-white rounded-lg p-4 flex flex-col items-center justify-center cursor-pointer transition-all">
-                                <Upload className="w-5 h-5 text-indigo-500 mb-1" />
-                                <span className="text-[11px] font-bold text-slate-700">Choose completed task photograph</span>
+                              <div className="text-[10px] text-rose-500 font-semibold bg-rose-50 p-2 rounded border border-rose-100">
+                                ⚠️ No timeline specified yet. Please update the crew's estimation.
+                              </div>
+                            )}
+
+                            <div className="flex gap-2.5 items-end">
+                              <div className="flex-1">
+                                <label className="block text-[9px] font-black text-slate-500 uppercase mb-1">Days Needed</label>
                                 <input
-                                  type="file"
-                                  accept="image/*"
-                                  required
-                                  onChange={(e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file) {
-                                      const reader = new FileReader();
-                                      reader.onloadend = () => {
-                                        setCompletionPhoto(reader.result as string);
-                                      };
-                                      reader.readAsDataURL(file);
-                                    }
-                                  }}
-                                  className="hidden"
+                                  type="number"
+                                  min="0"
+                                  max="30"
+                                  placeholder="e.g. 2"
+                                  value={estDays}
+                                  onChange={(e) => setEstDays(e.target.value)}
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-800 focus:outline-none focus:bg-white"
                                 />
-                              </label>
-                            )}
+                              </div>
+                              <div className="flex-1">
+                                <label className="block text-[9px] font-black text-slate-500 uppercase mb-1">Hours Needed</label>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="23"
+                                  placeholder="e.g. 4"
+                                  value={estHours}
+                                  onChange={(e) => setEstHours(e.target.value)}
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-800 focus:outline-none focus:bg-white"
+                                />
+                              </div>
+                              <button
+                                type="button"
+                                disabled={savingEstimation || (!estDays && !estHours)}
+                                onClick={() => handleSaveEstimation(selectedIssue.id, estDays, estHours)}
+                                className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50"
+                              >
+                                {savingEstimation ? <Loader2 className="w-3 animate-spin" /> : "Save"}
+                              </button>
+                            </div>
                           </div>
 
-                          <div className="space-y-1">
-                            <label className="block text-[10px] font-bold text-slate-500 uppercase">
-                              Completion Crew Notes
-                            </label>
-                            <textarea
-                              rows={2.5}
-                              required
-                              placeholder="Describe materials used, final measurements, and safety checks completed..."
-                              value={completionNotes}
-                              onChange={(e) => setCompletionNotes(e.target.value)}
-                              className="w-full bg-white border border-slate-200 rounded-lg p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500/30"
-                            />
-                          </div>
+                          {/* Completion Form */}
+                          <div className="border-t border-slate-200/60 pt-3">
+                            <span className="font-bold text-[11px] text-indigo-700 uppercase tracking-wide block mb-2">
+                              📸 Complete & Submit Proof
+                            </span>
+                            <form onSubmit={handleCompleteByDepartment} className="space-y-3">
+                              <p className="text-[11px] text-slate-500">
+                                To mark this incident as complete, you must capture/upload a photograph of the finished repairs and input your completion logs.
+                              </p>
 
+                              <div>
+                                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                                  📸 Upload Completion Photo
+                                </label>
+                                {completionPhoto ? (
+                                  <div className="relative rounded-lg overflow-hidden border border-indigo-200 max-h-40 aspect-video bg-slate-50">
+                                    <img src={completionPhoto} alt="Completion Proof" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                    <button
+                                      type="button"
+                                      onClick={() => setCompletionPhoto(null)}
+                                      className="absolute top-2 right-2 p-1.5 bg-slate-900/80 hover:bg-red-600 text-white rounded-lg transition-colors text-[10px] font-bold cursor-pointer"
+                                    >
+                                      Remove Photo
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <label className="border-2 border-dashed border-indigo-200 hover:border-indigo-400 bg-white rounded-lg p-4 flex flex-col items-center justify-center cursor-pointer transition-all">
+                                    <Upload className="w-5 h-5 text-indigo-500 mb-1" />
+                                    <span className="text-[11px] font-bold text-slate-700">Choose completed task photograph</span>
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      required
+                                      onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                          const reader = new FileReader();
+                                          reader.onloadend = () => {
+                                            setCompletionPhoto(reader.result as string);
+                                          };
+                                          reader.readAsDataURL(file);
+                                        }
+                                      }}
+                                      className="hidden"
+                                    />
+                                  </label>
+                                )}
+                              </div>
+
+                              <div className="space-y-1">
+                                <label className="block text-[10px] font-bold text-slate-500 uppercase">
+                                  Completion Crew Notes
+                                </label>
+                                <textarea
+                                  rows={2.5}
+                                  required
+                                  placeholder="Describe materials used, final measurements, and safety checks completed..."
+                                  value={completionNotes}
+                                  onChange={(e) => setCompletionNotes(e.target.value)}
+                                  className="w-full bg-white border border-slate-200 rounded-lg p-2.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500/30"
+                                />
+                              </div>
+
+                              <button
+                                type="submit"
+                                disabled={submittingCompletion || !completionPhoto}
+                                className={`w-full py-2 text-white text-xs font-bold rounded-lg transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                                  !completionPhoto 
+                                    ? "bg-slate-300 cursor-not-allowed" 
+                                    : "bg-indigo-600 hover:bg-indigo-700 shadow-sm"
+                                }`}
+                              >
+                                {submittingCompletion ? (
+                                  <>
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin" /> Submitting completion proof...
+                                  </>
+                                ) : (
+                                  <>✓ Submit Completed Task</>
+                                )}
+                              </button>
+                            </form>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="bg-white border border-indigo-150 p-4 rounded-xl text-center space-y-3 shadow-2xs">
+                          <p className="text-[11px] text-slate-500 leading-normal">
+                            This issue was transferred (routed) to your department crew by city dispatchers. Accept this ticket to dispatch crews and start active restoration works.
+                          </p>
                           <button
-                            type="submit"
-                            disabled={submittingCompletion || !completionPhoto}
-                            className={`w-full py-2 text-white text-xs font-bold rounded-lg transition flex items-center justify-center gap-1.5 cursor-pointer ${
-                              !completionPhoto 
-                                ? "bg-slate-300 cursor-not-allowed" 
-                                : "bg-indigo-600 hover:bg-indigo-700 shadow-sm"
-                            }`}
+                            type="button"
+                            onClick={() => handleStatusChange("In Progress", "Department crew accepted this municipal repair ticket. Crew dispatched with materials.")}
+                            className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg shadow-sm transition active:scale-98 cursor-pointer"
                           >
-                            {submittingCompletion ? (
-                              <>
-                                <Loader2 className="w-3.5 h-3.5 animate-spin" /> Submitting completion proof...
-                              </>
-                            ) : (
-                              <>✓ Submit Completed Task</>
-                            )}
+                            ⚙️ Accept & Start Repair Work
                           </button>
-                        </form>
+                        </div>
                       )}
                     </div>
                   )}
