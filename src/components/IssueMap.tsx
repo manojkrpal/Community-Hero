@@ -43,8 +43,67 @@ function ChangeView({ center, zoom }: { center: [number, number]; zoom: number }
 export default function IssueMap({ issues, onSelectIssue, onViewDetails, selectedIssueId }: IssueMapProps) {
   const [mapMode, setMapMode] = useState<"standard" | "alarming">("standard");
   const [searchQuery, setSearchQuery] = useState("");
-  const [viewCenter, setViewCenter] = useState<[number, number]>([0, 0]); // Default center
-  const [viewZoom, setViewZoom] = useState(2);
+  const [viewCenter, setViewCenter] = useState<[number, number]>([37.7749, -122.4194]); // SF default fallback center
+  const [viewZoom, setViewZoom] = useState(12);
+
+  // User/Citizen location states
+  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
+  const [userCity, setUserCity] = useState<string | null>(null);
+  const [isLocatingUser, setIsLocatingUser] = useState(false);
+  const [locatingError, setLocatingError] = useState<string | null>(null);
+
+  const locateCitizen = () => {
+    if (!navigator.geolocation) {
+      setLocatingError("Geolocation is not supported by your browser.");
+      return;
+    }
+    setIsLocatingUser(true);
+    setLocatingError(null);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        setUserLocation([lat, lng]);
+        setViewCenter([lat, lng]);
+        setViewZoom(13); // Focus zoom level for the city
+        
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10`);
+          if (res.ok) {
+            const data = await res.json();
+            const city = data.address?.city || data.address?.town || data.address?.village || data.address?.municipality || data.address?.suburb;
+            if (city) {
+              setUserCity(city);
+            } else {
+              setUserCity("Detected Municipal Area");
+            }
+          } else {
+            setUserCity("Current Location");
+          }
+        } catch (err) {
+          console.warn("Reverse-geocoding of current city failed:", err);
+          setUserCity("Current Location");
+        } finally {
+          setIsLocatingUser(false);
+        }
+      },
+      (err) => {
+        console.warn("Geolocation denied or error:", err);
+        setLocatingError("GPS location access denied or timed out. Map focused on community center.");
+        setIsLocatingUser(false);
+        
+        // Fallback: If we have issues, center on the first issue's coordinates
+        if (issues.length > 0) {
+          setViewCenter([issues[0].latitude, issues[0].longitude]);
+          setViewZoom(12);
+        } else {
+          setViewCenter([37.7749, -122.4194]);
+          setViewZoom(12);
+        }
+      },
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  };
 
   // Find selected issue
   const selectedIssue = issues.find((i) => i.id === selectedIssueId);
@@ -53,12 +112,10 @@ export default function IssueMap({ issues, onSelectIssue, onViewDetails, selecte
     if (selectedIssue) {
       setViewCenter([selectedIssue.latitude, selectedIssue.longitude]);
       setViewZoom(16);
-    } else if (issues.length > 0) {
-      // Fit all issues if no selection? Or just stay at default.
-      // For now, let's just center on the first issue if we have some
-      // setViewCenter([issues[0].latitude, issues[0].longitude]);
+    } else {
+      locateCitizen();
     }
-  }, [selectedIssueId, issues]);
+  }, [selectedIssueId]);
 
   // Filter issues based on search query
   const filteredIssues = issues.filter((issue) => {
@@ -111,6 +168,28 @@ export default function IssueMap({ issues, onSelectIssue, onViewDetails, selecte
       iconSize: [30, 30],
       iconAnchor: [15, 30],
       popupAnchor: [0, -30]
+    });
+  };
+
+  // Citizen current location marker creator
+  const createCitizenLocationIcon = () => {
+    return L.divIcon({
+      className: "citizen-gps-icon",
+      html: `
+        <div style="position: relative; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
+          <style>
+            @keyframes gpsPulse {
+              0% { transform: scale(0.6); opacity: 0.6; }
+              50% { transform: scale(1.8); opacity: 0; }
+              100% { transform: scale(0.6); opacity: 0.6; }
+            }
+          </style>
+          <div style="position: absolute; width: 24px; height: 24px; background: #3b82f6; border-radius: 50%; animation: gpsPulse 2s ease-out infinite;"></div>
+          <div style="position: relative; width: 14px; height: 14px; background: #1d4ed8; border: 2.5px solid #ffffff; border-radius: 50%; box-shadow: 0 2px 5px rgba(29,78,216,0.5);"></div>
+        </div>
+      `,
+      iconSize: [40, 40],
+      iconAnchor: [20, 20],
     });
   };
 
@@ -221,6 +300,28 @@ export default function IssueMap({ issues, onSelectIssue, onViewDetails, selecte
               />
             ))}
 
+            {/* Citizen's Current GPS Location Marker */}
+            {userLocation && (
+              <Marker 
+                position={userLocation}
+                icon={createCitizenLocationIcon()}
+              >
+                <Popup className="custom-popup">
+                  <div className="p-1 max-w-[200px] text-center">
+                    <span className="bg-blue-100 text-blue-700 text-[10px] font-bold px-2.5 py-0.5 rounded-full border border-blue-200 uppercase tracking-wide inline-block mb-1">
+                      📍 You Are Here
+                    </span>
+                    <h5 className="font-bold text-xs text-slate-800 mt-1">
+                      {userCity || "Current Location"}
+                    </h5>
+                    <p className="text-[10px] text-slate-500 mt-1 font-mono">
+                      GPS: {userLocation[0].toFixed(5)}°N, {userLocation[1].toFixed(5)}°W
+                    </p>
+                  </div>
+                </Popup>
+              </Marker>
+            )}
+
             {/* Issue Markers */}
             {filteredIssues.map((issue) => (
               <Marker 
@@ -254,6 +355,17 @@ export default function IssueMap({ issues, onSelectIssue, onViewDetails, selecte
             ))}
           </MapContainer>
 
+          {/* Floating Focus Button */}
+          <button
+            onClick={locateCitizen}
+            disabled={isLocatingUser}
+            className="absolute top-4 right-4 bg-white/95 backdrop-blur hover:bg-blue-50 text-slate-700 hover:text-blue-600 px-3 py-2 rounded-2xl border border-slate-200 shadow-md transition duration-200 flex items-center gap-1.5 text-[11px] font-extrabold z-[1000] cursor-pointer disabled:opacity-50"
+            title="Focus on my current city"
+          >
+            <Compass className={`w-3.5 h-3.5 ${isLocatingUser ? "animate-spin text-blue-500" : "text-slate-600"}`} />
+            <span>{isLocatingUser ? "Locating..." : "Focus My City"}</span>
+          </button>
+
           {/* Quick Overlay */}
           <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur border border-slate-200 p-3 rounded-xl pointer-events-none text-[10px] font-mono text-slate-600 space-y-1 z-[1000] shadow-sm">
             <div className="flex items-center gap-1.5 text-blue-600 font-bold border-b border-slate-100 pb-1">
@@ -282,6 +394,41 @@ export default function IssueMap({ issues, onSelectIssue, onViewDetails, selecte
               />
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3.5" />
             </div>
+
+            {/* Geolocation Banners */}
+            {isLocatingUser && (
+              <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 text-[11px] text-blue-700 flex gap-2.5 items-center justify-center animate-pulse">
+                <Compass className="w-4 h-4 text-blue-500 animate-spin" />
+                <span className="font-bold">Locating city sector...</span>
+              </div>
+            )}
+
+            {locatingError && (
+              <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 text-[11px] text-amber-800 flex gap-2 items-start">
+                <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold block">GPS Access Note</span>
+                  <p className="text-[10px] text-slate-600 mt-0.5 leading-relaxed">{locatingError}</p>
+                </div>
+              </div>
+            )}
+
+            {userCity && !isLocatingUser && (
+              <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 text-[11px] text-emerald-800 flex gap-2.5 items-center shadow-2xs">
+                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <span className="text-[9px] uppercase font-bold tracking-widest text-emerald-600 block leading-none">Focused City</span>
+                  <p className="font-extrabold text-xs text-slate-800 mt-1 truncate">{userCity}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={locateCitizen}
+                  className="text-[10px] text-indigo-600 hover:text-indigo-800 font-bold hover:underline shrink-0"
+                >
+                  Re-Center
+                </button>
+              </div>
+            )}
 
             {mapMode === "alarming" && alarmingAreas.length > 0 && (
               <div className="bg-rose-50 border border-rose-100 rounded-xl p-3 text-[11px] text-rose-700 flex gap-2 items-start">
