@@ -10,8 +10,11 @@ import { Issue } from "../types";
 import { MapPin, Compass, Search, Activity, AlertTriangle, Info } from "lucide-react";
 
 // Fix for default marker icons in Leaflet with Vite/React
+// @ts-ignore
 import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
+// @ts-ignore
 import markerIcon from "leaflet/dist/images/marker-icon.png";
+// @ts-ignore
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;

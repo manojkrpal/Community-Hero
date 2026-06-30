@@ -32,6 +32,7 @@ import {
 import IssueMap from "./components/IssueMap";
 import ReportIssueForm from "./components/ReportIssueForm";
 import AnalyticsPanel from "./components/AnalyticsPanel";
+import LeaderboardPanel from "./components/LeaderboardPanel";
 import AuthPage from "./components/AuthPage";
 import { 
   MapPin, 
@@ -1059,6 +1060,12 @@ export default function App() {
             >
               Analytics
             </button>
+            <button 
+              onClick={() => setActiveTab("leaderboard")} 
+              className={`py-5 transition-colors border-b-2 hover:text-slate-950 ${activeTab === "leaderboard" ? "text-blue-600 border-blue-600 font-bold" : "border-transparent"}`}
+            >
+              Leaderboard
+            </button>
           </div>
         </div>
 
@@ -1314,6 +1321,16 @@ export default function App() {
               }`}
             >
               AI Predictive Analytics
+            </button>
+            <button
+              onClick={() => setActiveTab("leaderboard")}
+              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+                activeTab === "leaderboard" 
+                  ? "bg-blue-600 text-white shadow-sm" 
+                  : "text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              Leaderboard
             </button>
           </div>
 
@@ -2978,6 +2995,10 @@ export default function App() {
 
           {activeTab === "analytics" && (
             <AnalyticsPanel issues={issues} />
+          )}
+
+          {activeTab === "leaderboard" && (
+            <LeaderboardPanel issues={issues} currentUser={currentUser} />
           )}
 
         </div>
