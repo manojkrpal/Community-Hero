@@ -286,9 +286,12 @@ export default function AnalyticsPanel({ issues }: AnalyticsPanelProps) {
                   <div>
                     {/* Top Header Badge */}
                     <div className="flex justify-between items-start mb-3">
-                      <span className="bg-blue-50 text-blue-600 border border-blue-100 font-mono text-[10px] font-bold px-2.5 py-1 rounded-md">
-                        {item.wardName}
-                      </span>
+                      <div className="flex flex-col">
+                        <span className="bg-blue-50 text-blue-600 border border-blue-100 font-mono text-[10px] font-bold px-2.5 py-1 rounded-md mb-1">
+                          {item.wardNumber} - {item.wardName}
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-bold uppercase">{item.cityName}</span>
+                      </div>
                       <span className="bg-red-50 text-red-600 border border-red-200 font-mono text-xs font-bold px-2 py-0.5 rounded-md">
                         {item.probability}% Risk
                       </span>

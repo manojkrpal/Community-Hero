@@ -371,11 +371,13 @@ Based on this raw civic issue distribution within this specific city, predict th
 Raw Issues list in current city:
 ${issueSummary}
 
-Provide a structured JSON output with three high-risk forecasts:
+Provide a structured JSON output with three high-risk forecasts, including specific ward numbers and city name:
 {
   "forecasts": [
     {
-      "wardName": "Central Ward (City Core)",
+      "wardNumber": "Ward 5",
+      "wardName": "Central District",
+      "cityName": "San Francisco",
       "hazardType": "Garbage Overflow / Drainage Clog Risk",
       "probability": 85,
       "factors": "Compounding effect of water leakage issues near high garbage density areas in the local city.",

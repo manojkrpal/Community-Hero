@@ -152,7 +152,9 @@ export function seedMockData() {
         xp: 1250,
         level: 4,
         badges: ["First Responder", "Community Pillar", "Eagle Eye"],
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        streakCount: 0,
+        lastActiveDate: new Date().toISOString()
       },
       {
         uid: "user-officer",
@@ -163,7 +165,9 @@ export function seedMockData() {
         xp: 4500,
         level: 8,
         badges: ["Civic Excellence", "Resolution Master", "Ward Guardian"],
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        streakCount: 0,
+        lastActiveDate: new Date().toISOString()
       },
       {
         uid: "user-admin",
@@ -174,7 +178,9 @@ export function seedMockData() {
         xp: 12000,
         level: 15,
         badges: ["Platform Founder", "Omniscient Moderator"],
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        streakCount: 0,
+        lastActiveDate: new Date().toISOString()
       }
     ];
     setLocalData(LOCAL_USERS_KEY, mockUsers);
@@ -266,6 +272,7 @@ export async function createIssue(issue: Omit<Issue, "id">): Promise<Issue> {
       localIssues.unshift(savedIssue);
       setLocalData(LOCAL_ISSUES_KEY, localIssues);
       
+      await awardUserXP(issue.reporterId, 10, 5);
       return savedIssue;
     } catch (err) {
       console.error("Firebase createIssue error, fallback to local storage", err);
@@ -277,6 +284,7 @@ export async function createIssue(issue: Omit<Issue, "id">): Promise<Issue> {
   const localIssues = getLocalData<Issue[]>(LOCAL_ISSUES_KEY, []);
   localIssues.unshift(createdIssue);
   setLocalData(LOCAL_ISSUES_KEY, localIssues);
+  await awardUserXP(issue.reporterId, 10, 5);
   return createdIssue;
 }
 
@@ -355,6 +363,8 @@ export async function voteIssue(issueId: string, type: "upvote" | "downvote", us
   const activities = getLocalData<VerificationActivity[]>(LOCAL_VERIFICATIONS_KEY, []);
   activities.unshift(newActivity);
   setLocalData(LOCAL_VERIFICATIONS_KEY, activities);
+  
+  await awardUserXP(userId, 5, 2);
 
   return updateIssue(issueId, { [field]: updatedValue });
 }
@@ -405,6 +415,8 @@ export async function addVerificationEvidence(
     await updateIssue(issueId, { evidenceCount, status, verificationConsensus: consensus });
   }
 
+  await awardUserXP(userId, 5, 2);
+  
   return newActivity;
 }
 
@@ -489,6 +501,22 @@ export async function logTimelineUpdate(
   const timelineList = getLocalData<TimelineUpdate[]>(LOCAL_TIMELINE_KEY, []);
   timelineList.unshift(newTimeline);
   setLocalData(LOCAL_TIMELINE_KEY, timelineList);
+  
+  // Award bonus if issue is resolved
+  if (toStatus === "Resolved") {
+    const issues = getLocalData<Issue[]>(LOCAL_ISSUES_KEY, []);
+    const issue = issues.find(i => i.id === issueId);
+    if (issue) {
+      // Award XP to original reporter
+      await awardUserXP(issue.reporterId, 50, 20, "Fix Confirmed");
+      
+      // Award XP to the actor (if they are not the reporter)
+      if (actorId !== issue.reporterId) {
+        await awardUserXP(actorId, 20, 10);
+      }
+    }
+  }
+  
   return newTimeline;
 }
 
@@ -507,7 +535,9 @@ export function getUserProfile(userId: string): User {
     xp: 10,
     level: 1,
     badges: ["First Step"],
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
+    streakCount: 0,
+    lastActiveDate: new Date().toISOString()
   };
   users.push(newMockUser);
   setLocalData(LOCAL_USERS_KEY, users);
@@ -515,35 +545,61 @@ export function getUserProfile(userId: string): User {
 }
 
 // Award user gamification points for active verification / resolution confirmation
-export function awardUserXP(userId: string, xpReward: number, repReward: number, badgeAwarded?: string): User {
+export async function awardUserXP(userId: string, xpReward: number, repReward: number, badgeAwarded?: string): Promise<User> {
   const users = getLocalData<User[]>(LOCAL_USERS_KEY, []);
   const idx = users.findIndex(u => u.uid === userId);
+  
   if (idx !== -1) {
     let currentXp = users[idx].xp + xpReward;
     let currentRep = users[idx].reputation + repReward;
-    let currentLevel = Math.floor(Math.sqrt(currentXp / 100)) + 1; // standard level-up algorithm
+    let currentLevel = Math.floor(Math.sqrt(currentXp / 100)) + 1;
+    
+    // Streak logic
+    const today = new Date().toISOString().split('T')[0];
+    const lastActive = users[idx].lastActiveDate.split('T')[0];
+    let streakCount = users[idx].streakCount;
+    
+    if (today !== lastActive) {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toISOString().split('T')[0];
+      
+      if (lastActive === yesterdayStr) {
+        streakCount += 1;
+      } else {
+        streakCount = 1;
+      }
+    }
     
     const badges = [...users[idx].badges];
     if (badgeAwarded && !badges.includes(badgeAwarded)) {
       badges.push(badgeAwarded);
     }
     
-    // Automatically award landmark badges based on level/rep
-    if (currentLevel >= 3 && !badges.includes("Active Guardian")) {
-      badges.push("Active Guardian");
-    }
-    if (currentRep >= 500 && !badges.includes("Civic Legend")) {
-      badges.push("Civic Legend");
-    }
+    // Automatically award landmark badges
+    if (currentLevel >= 3 && !badges.includes("Active Guardian")) badges.push("Active Guardian");
+    if (currentRep >= 500 && !badges.includes("Civic Legend")) badges.push("Civic Legend");
+    if (streakCount >= 5 && !badges.includes("Consistent Contributor")) badges.push("Consistent Contributor");
 
     users[idx] = {
       ...users[idx],
       xp: currentXp,
       reputation: currentRep,
       level: currentLevel,
-      badges
+      badges,
+      streakCount,
+      lastActiveDate: new Date().toISOString()
     };
     setLocalData(LOCAL_USERS_KEY, users);
+    
+    // Sync to Firebase
+    if (isFirebaseInitialized && db) {
+      const docRef = doc(db, "users", userId);
+      await updateDoc(docRef, users[idx] as any).catch(err => {
+        console.error("Failed to sync XP update to Firestore", err);
+      });
+    }
+    
     return users[idx];
   }
   return getUserProfile(userId);
@@ -661,7 +717,9 @@ export function saveUserProfileFromAuth(userId: string, name: string, email: str
         ? ["Department Expert", "Civic Crew Leader"]
         : ["First Step"],
       createdAt: new Date().toISOString(),
-      department: department || null
+      department: department || null,
+      streakCount: 0,
+      lastActiveDate: new Date().toISOString()
     };
     users.push(updated);
   }
@@ -947,6 +1005,32 @@ export async function cleanupSanFranciscoIssues(): Promise<number> {
       console.log(`Cleaned up ${count} San Francisco issues from database.`);
     } catch (err) {
       console.error("Cleanup failed", err);
+    }
+  }
+  return count;
+}
+
+// Cleanup function to remove issues by reporter
+export async function deleteIssuesByReporter(reporterName: string): Promise<number> {
+  await firebaseReadyPromise.catch(() => false);
+  let count = 0;
+  if (isFirebaseInitialized && db) {
+    try {
+      const q = query(collection(db, "issues"), where("reporterName", "==", reporterName));
+      const snap = await getDocs(q);
+      for (const docSnap of snap.docs) {
+        await deleteDoc(doc(db, "issues", docSnap.id));
+        count++;
+      }
+      
+      // Also cleanup local storage
+      const localIssues = getLocalData<Issue[]>(LOCAL_ISSUES_KEY, []);
+      const filtered = localIssues.filter(i => i.reporterName !== reporterName);
+      setLocalData(LOCAL_ISSUES_KEY, filtered);
+      
+      console.log(`Deleted ${count} issues reported by ${reporterName}.`);
+    } catch (err) {
+      console.error("Cleanup issues by reporter failed", err);
     }
   }
   return count;

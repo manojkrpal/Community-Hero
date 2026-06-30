@@ -113,6 +113,8 @@ export interface User {
   badges: string[];
   createdAt: string;
   department?: string | null;
+  streakCount: number;
+  lastActiveDate: string; // ISO String
 }
 
 export interface VerificationActivity {

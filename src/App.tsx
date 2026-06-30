@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect, useRef } from "react";
+import { Routes, Route, useNavigate, Link, useLocation } from "react-router-dom";
 import { 
   Issue, 
   UserRole, 
@@ -27,13 +28,15 @@ import {
   onAuthChanged,
   logoutUser,
   subscribeToIssues,
-  cleanupSanFranciscoIssues
+  cleanupSanFranciscoIssues,
+  deleteIssuesByReporter
 } from "./firebase";
 import IssueMap from "./components/IssueMap";
 import ReportIssueForm from "./components/ReportIssueForm";
 import AnalyticsPanel from "./components/AnalyticsPanel";
 import LeaderboardPanel from "./components/LeaderboardPanel";
 import GamePanel from "./components/GamePanel";
+import ProfilePanel from "./components/ProfilePanel";
 import AuthPage from "./components/AuthPage";
 import { 
   MapPin, 
@@ -109,6 +112,8 @@ const playNotificationSound = () => {
 };
 
 export default function App() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [issues, setIssues] = useState<Issue[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const currentUserRef = useRef<User | null>(null);
@@ -1082,6 +1087,14 @@ export default function App() {
     "Electrical Officer"
   ].includes(currentUser?.role || "");
 
+  if (location.pathname === "/profile") {
+    return (
+       <div className="min-h-screen bg-white">
+          <ProfilePanel currentUser={currentUser} issues={issues} onBack={() => navigate(-1)} />
+       </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans flex flex-col" id="applet-main-container">
       {/* Top Navigation Bar */}
@@ -1134,7 +1147,20 @@ export default function App() {
         <div className="flex items-center gap-4">
           {/* Admin Push Notification Bell */}
           {(currentUser?.role === "Administrator") && (
-            <div className="relative">
+            <div className="relative flex gap-2">
+              <button
+                onClick={async () => {
+                  if (confirm("Are you sure you want to remove all issues reported by Officer David Miller?")) {
+                    const count = await deleteIssuesByReporter("Officer David Miller");
+                    alert(`Deleted ${count} issues reported by Officer David Miller.`);
+                  }
+                }}
+                className="p-2 bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 rounded-xl transition cursor-pointer flex items-center justify-center shadow-xs"
+                title="Remove David Miller Issues"
+              >
+                <Trash2 className="w-4.5 h-4.5" />
+              </button>
+              
               <button
                 onClick={() => setShowNotificationDropdown(!showNotificationDropdown)}
                 className="relative p-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 hover:border-slate-300 text-slate-600 hover:text-slate-800 rounded-xl transition cursor-pointer flex items-center justify-center shadow-xs"
@@ -1250,9 +1276,13 @@ export default function App() {
                     </div>
                   </div>
                 )}
-                <div className="w-10 h-10 rounded-full bg-blue-100 border-2 border-blue-500 shadow-sm overflow-hidden flex items-center justify-center font-bold text-blue-700">
+                
+                <Link 
+                  to="/profile"
+                  className="w-10 h-10 rounded-full bg-blue-100 border-2 border-blue-500 shadow-sm overflow-hidden flex items-center justify-center font-bold text-blue-700 hover:bg-blue-200 transition"
+                >
                   {currentUser.name ? currentUser.name.split(" ").map(n => n[0]).join("").toUpperCase() : "U"}
-                </div>
+                </Link>
               </div>
               
               <button
