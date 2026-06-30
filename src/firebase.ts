@@ -13,7 +13,8 @@ import {
   orderBy,
   deleteDoc,
   onSnapshot,
-  Firestore
+  Firestore,
+  serverTimestamp
 } from "firebase/firestore";
 import { 
   getAuth, 
@@ -1034,4 +1035,50 @@ export async function deleteIssuesByReporter(reporterName: string): Promise<numb
     }
   }
   return count;
+}
+
+// --- CHAT OPERATIONS ---
+
+export async function createConversation(participants: string[], type: 'ai' | 'issue' | 'municipality', issueId?: string): Promise<string> {
+  await firebaseReadyPromise.catch(() => false);
+  if (!isFirebaseInitialized || !db) throw new Error("Firebase not initialized");
+
+  const conversationRef = await addDoc(collection(db, "conversations"), {
+    participants,
+    type,
+    issueId: issueId || null,
+    createdAt: new Date().toISOString()
+  });
+  return conversationRef.id;
+}
+
+export async function sendMessage(conversationId: string, message: { text: string, senderId: string, senderName: string, type: 'text' | 'image' | 'system' }): Promise<void> {
+  await firebaseReadyPromise.catch(() => false);
+  if (!isFirebaseInitialized || !db) throw new Error("Firebase not initialized");
+
+  await addDoc(collection(db, "conversations", conversationId, "messages"), {
+    ...message,
+    timestamp: serverTimestamp()
+  });
+  
+  await updateDoc(doc(db, "conversations", conversationId), {
+    lastMessage: {
+      text: message.text,
+      senderId: message.senderId,
+      timestamp: serverTimestamp()
+    }
+  });
+}
+
+export function subscribeToMessages(conversationId: string, callback: (messages: any[]) => void): () => void {
+  if (!isFirebaseInitialized || !db) return () => {};
+  
+  const q = query(collection(db, "conversations", conversationId, "messages"), orderBy("timestamp", "asc"));
+  return onSnapshot(q, (snap) => {
+    const messages: any[] = [];
+    snap.forEach(docSnap => {
+      messages.push({ id: docSnap.id, ...docSnap.data() });
+    });
+    callback(messages);
+  });
 }

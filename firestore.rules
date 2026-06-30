@@ -39,6 +39,22 @@ service cloud.firestore {
         && data.createdAt is string;
     }
 
+    // Helper to validate individual Conversation entity properties
+    function isValidConversation(data) {
+      return data.participants is list && data.participants.size() > 0 && data.participants.size() <= 20
+        && data.type is string && (data.type == 'ai' || data.type == 'issue' || data.type == 'municipality')
+        && data.createdAt is string;
+    }
+
+    // Helper to validate individual ChatMessage entity properties
+    function isValidChatMessage(data) {
+      return data.text is string && data.text.size() > 0 && data.text.size() <= 2000
+        && data.senderId is string && data.senderId.size() > 0 && data.senderId.size() <= 128
+        && data.senderName is string && data.senderName.size() > 0 && data.senderName.size() <= 128
+        && data.type is string && (data.type == 'text' || data.type == 'image' || data.type == 'system')
+        && data.timestamp is string;
+    }
+
     // Matches the issues collection
     match /issues/{issueId} {
       allow read: if true;
@@ -51,6 +67,18 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if request.auth != null;
       allow write: if request.auth != null && request.auth.uid == userId && isValidUser(incoming());
+    }
+
+    // Matches the conversations collection
+    match /conversations/{conversationId} {
+      allow read: if request.auth != null && request.auth.uid in resource.data.participants;
+      allow create: if request.auth != null && request.auth.uid in incoming().participants && isValidConversation(incoming());
+    }
+
+    // Matches the messages sub-collection
+    match /conversations/{conversationId}/messages/{messageId} {
+      allow read: if request.auth != null && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants;
+      allow create: if request.auth != null && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants && isValidChatMessage(incoming());
     }
   }
 }

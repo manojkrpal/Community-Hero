@@ -38,6 +38,8 @@ import LeaderboardPanel from "./components/LeaderboardPanel";
 import GamePanel from "./components/GamePanel";
 import ProfilePanel from "./components/ProfilePanel";
 import AuthPage from "./components/AuthPage";
+import { ChatFloatingButton } from './components/Chat/ChatFloatingButton';
+import { ChatDrawer } from './components/Chat/ChatDrawer';
 import { 
   MapPin, 
   AlertTriangle, 
@@ -69,7 +71,13 @@ import {
   X,
   Star,
   Send,
-  Globe
+  Globe,
+  Menu,
+  LayoutDashboard,
+  Map,
+  BarChart,
+  Trophy,
+  Gamepad2
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -114,6 +122,7 @@ const playNotificationSound = () => {
 export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [issues, setIssues] = useState<Issue[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const currentUserRef = useRef<User | null>(null);
@@ -1098,50 +1107,71 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans flex flex-col" id="applet-main-container">
       {/* Top Navigation Bar */}
-      <nav className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between shrink-0 sticky top-0 z-40">
-        <div className="flex items-center gap-8">
+      <nav className="h-16 bg-white border-b border-slate-200 px-4 md:px-6 flex items-center justify-between shrink-0 sticky top-0 z-40">
+        <div className="flex items-center gap-8 w-full">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-lg">C</span>
             </div>
-            <span className="font-bold text-xl tracking-tight text-slate-900">CommunityHero</span>
+            <span className="font-bold text-xl tracking-tight text-slate-900 hidden sm:block">CommunityHero</span>
           </div>
           
           <div className="hidden md:flex gap-6 text-sm font-medium text-slate-500">
-            <button 
-              onClick={() => setActiveTab("feed")} 
-              className={`py-5 transition-colors border-b-2 hover:text-slate-950 ${activeTab === "feed" ? "text-blue-600 border-blue-600 font-bold" : "border-transparent"}`}
-            >
+            <button onClick={() => setActiveTab("feed")} className={`flex items-center gap-2 py-5 transition-colors border-b-2 hover:text-slate-950 ${activeTab === "feed" ? "text-blue-600 border-blue-600 font-bold" : "border-transparent"}`}>
+              <LayoutDashboard className="w-4 h-4" />
               Dashboard
             </button>
-            <button 
-              onClick={() => setActiveTab("map")} 
-              className={`py-5 transition-colors border-b-2 hover:text-slate-950 ${activeTab === "map" ? "text-blue-600 border-blue-600 font-bold" : "border-transparent"}`}
-            >
+            <button onClick={() => setActiveTab("map")} className={`flex items-center gap-2 py-5 transition-colors border-b-2 hover:text-slate-950 ${activeTab === "map" ? "text-blue-600 border-blue-600 font-bold" : "border-transparent"}`}>
+              <Map className="w-4 h-4" />
               Issue Map
             </button>
-            <button 
-              onClick={() => setActiveTab("analytics")} 
-              className={`py-5 transition-colors border-b-2 hover:text-slate-950 ${activeTab === "analytics" ? "text-blue-600 border-blue-600 font-bold" : "border-transparent"}`}
-            >
+            <button onClick={() => setActiveTab("analytics")} className={`flex items-center gap-2 py-5 transition-colors border-b-2 hover:text-slate-950 ${activeTab === "analytics" ? "text-blue-600 border-blue-600 font-bold" : "border-transparent"}`}>
+              <BarChart className="w-4 h-4" />
               Analytics
             </button>
-            <button 
-              onClick={() => setActiveTab("leaderboard")} 
-              className={`py-5 transition-colors border-b-2 hover:text-slate-950 ${activeTab === "leaderboard" ? "text-blue-600 border-blue-600 font-bold" : "border-transparent"}`}
-            >
+            <button onClick={() => setActiveTab("leaderboard")} className={`flex items-center gap-2 py-5 transition-colors border-b-2 hover:text-slate-950 ${activeTab === "leaderboard" ? "text-blue-600 border-blue-600 font-bold" : "border-transparent"}`}>
+              <Trophy className="w-4 h-4" />
               Leaderboard
             </button>
             {(!currentUser || ["Citizen", "Guest", "Volunteer"].includes(currentUser.role)) && (
-              <button 
-                onClick={() => setActiveTab("game")} 
-                className={`py-5 transition-colors border-b-2 hover:text-slate-950 ${activeTab === "game" ? "text-blue-600 border-blue-600 font-bold" : "border-transparent"}`}
-              >
+              <button onClick={() => setActiveTab("game")} className={`flex items-center gap-2 py-5 transition-colors border-b-2 hover:text-slate-950 ${activeTab === "game" ? "text-blue-600 border-blue-600 font-bold" : "border-transparent"}`}>
+                <Gamepad2 className="w-4 h-4" />
                 Gaming Arena
               </button>
             )}
           </div>
         </div>
+
+        <button className="md:hidden p-2 text-slate-600" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+          {isMobileMenuOpen ? <X /> : <Menu />}
+        </button>
+
+      {isMobileMenuOpen && (
+        <div className="md:hidden bg-white border-b border-slate-200 p-4 flex flex-col gap-2 z-30">
+          <button onClick={() => { setActiveTab("feed"); setIsMobileMenuOpen(false); }} className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${activeTab === "feed" ? "bg-blue-50 text-blue-600 font-bold" : "text-slate-600 hover:bg-slate-100"}`}>
+            <LayoutDashboard className="w-5 h-5" />
+            Dashboard
+          </button>
+          <button onClick={() => { setActiveTab("map"); setIsMobileMenuOpen(false); }} className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${activeTab === "map" ? "bg-blue-50 text-blue-600 font-bold" : "text-slate-600 hover:bg-slate-100"}`}>
+            <Map className="w-5 h-5" />
+            Issue Map
+          </button>
+          <button onClick={() => { setActiveTab("analytics"); setIsMobileMenuOpen(false); }} className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${activeTab === "analytics" ? "bg-blue-50 text-blue-600 font-bold" : "text-slate-600 hover:bg-slate-100"}`}>
+            <BarChart className="w-5 h-5" />
+            Analytics
+          </button>
+          <button onClick={() => { setActiveTab("leaderboard"); setIsMobileMenuOpen(false); }} className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${activeTab === "leaderboard" ? "bg-blue-50 text-blue-600 font-bold" : "text-slate-600 hover:bg-slate-100"}`}>
+            <Trophy className="w-5 h-5" />
+            Leaderboard
+          </button>
+          {(!currentUser || ["Citizen", "Guest", "Volunteer"].includes(currentUser.role)) && (
+            <button onClick={() => { setActiveTab("game"); setIsMobileMenuOpen(false); }} className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${activeTab === "game" ? "bg-blue-50 text-blue-600 font-bold" : "text-slate-600 hover:bg-slate-100"}`}>
+              <Gamepad2 className="w-5 h-5" />
+              Gaming Arena
+            </button>
+          )}
+        </div>
+      )}
 
         {/* Gamified Profile Bar & Role Switcher */}
         <div className="flex items-center gap-4">
@@ -4358,6 +4388,8 @@ export default function App() {
           ))}
         </AnimatePresence>
       </div>
+      <ChatFloatingButton />
+      <ChatDrawer />
     </div>
   );
 }

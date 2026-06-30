@@ -54,6 +54,32 @@
         "createdAt": { "type": "string" }
       },
       "required": ["uid", "name", "email", "role", "reputation", "xp", "level", "badges", "createdAt"]
+    },
+    "Conversation": {
+      "title": "Conversation",
+      "description": "A chat thread between users or an AI",
+      "type": "object",
+      "properties": {
+        "participants": { "type": "array" },
+        "issueId": { "type": "string" },
+        "type": { "type": "string" },
+        "lastMessage": { "type": "object" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["participants", "type", "createdAt"]
+    },
+    "ChatMessage": {
+      "title": "ChatMessage",
+      "description": "A message within a conversation",
+      "type": "object",
+      "properties": {
+        "text": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "type": { "type": "string" },
+        "timestamp": { "type": "string" }
+      },
+      "required": ["text", "senderId", "senderName", "type", "timestamp"]
     }
   },
   "firestore": {
@@ -64,6 +90,14 @@
     "users/{userId}": {
       "schema": "User",
       "description": "Collection of registered user profiles"
+    },
+    "conversations/{conversationId}": {
+      "schema": "Conversation",
+      "description": "Chat conversations"
+    },
+    "conversations/{conversationId}/messages/{messageId}": {
+      "schema": "ChatMessage",
+      "description": "Messages within conversations"
     }
   }
 }
