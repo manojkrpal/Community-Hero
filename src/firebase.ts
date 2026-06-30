@@ -257,16 +257,26 @@ export function subscribeToIssues(callback: (issues: Issue[]) => void): () => vo
   };
 }
 
+// Utility to generate human-readable ticket ID
+function generateTicketId(): string {
+  const prefix = "CH";
+  const timestamp = Date.now().toString(36).toUpperCase().slice(-4);
+  const random = Math.random().toString(36).toUpperCase().slice(2, 6);
+  return `${prefix}-${timestamp}-${random}`;
+}
+
 // Add a new issue
-export async function createIssue(issue: Omit<Issue, "id">): Promise<Issue> {
+export async function createIssue(issue: Omit<Issue, "id" | "ticketId">): Promise<Issue> {
   await firebaseReadyPromise.catch(() => false);
+  const ticketId = generateTicketId();
   const newId = `issue-${Math.random().toString(36).substr(2, 9)}`;
-  const createdIssue: Issue = { ...issue, id: newId };
+  const issueWithTicket: Omit<Issue, "id"> = { ...issue, ticketId };
+  const createdIssue: Issue = { ...issueWithTicket, id: newId };
 
   if (isFirebaseInitialized && db) {
     try {
-      const docRef = await addDoc(collection(db, "issues"), issue);
-      const savedIssue = { ...issue, id: docRef.id };
+      const docRef = await addDoc(collection(db, "issues"), issueWithTicket);
+      const savedIssue = { ...issueWithTicket, id: docRef.id };
       
       // Update local storage in parallel
       const localIssues = getLocalData<Issue[]>(LOCAL_ISSUES_KEY, []);
@@ -287,6 +297,26 @@ export async function createIssue(issue: Omit<Issue, "id">): Promise<Issue> {
   setLocalData(LOCAL_ISSUES_KEY, localIssues);
   await awardUserXP(issue.reporterId, 10, 5);
   return createdIssue;
+}
+
+// Get issue by ticket ID
+export async function getIssueByTicketId(ticketId: string): Promise<Issue | null> {
+  await firebaseReadyPromise.catch(() => false);
+  if (isFirebaseInitialized && db) {
+    try {
+      const q = query(collection(db, "issues"), where("ticketId", "==", ticketId));
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        const docSnap = snap.docs[0];
+        return { id: docSnap.id, ...docSnap.data() } as Issue;
+      }
+    } catch (err) {
+      console.error("Get issue by ticket ID error", err);
+    }
+  }
+  // Check local storage as fallback
+  const localIssues = getLocalData<Issue[]>(LOCAL_ISSUES_KEY, []);
+  return localIssues.find(i => i.ticketId === ticketId) || null;
 }
 
 // Update an issue

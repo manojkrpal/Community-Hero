@@ -435,8 +435,89 @@ Do not include codeblocks or text outside this JSON.
   }
 });
 
+// 5. AI General Assistant Chat Endpoint
+app.post("/api/chat", async (req: any, res: any) => {
+  const { message, history, issueContext } = req.body;
 
-// 5. Mount Vite middleware for development or serve build folder in production
+  if (!message) {
+    return res.status(400).json({ success: false, error: "Message is required" });
+  }
+
+  try {
+    const ai = getGeminiClient();
+    
+    let contextStr = "";
+    if (issueContext) {
+      contextStr = `
+CONTEXT DATA:
+The user has provided a ticket ID or you have found relevant issue data:
+- Title: ${issueContext.title}
+- Status: ${issueContext.status}
+- Category: ${issueContext.category}
+- Severity: ${issueContext.severity}
+- Address: ${issueContext.address}
+- Reported By: ${issueContext.reporterName}
+- Created At: ${issueContext.createdAt}
+
+Use this data to answer the user's specific question about this issue.
+`;
+    }
+
+    const prompt = `
+You are the "Community Hero AI Assistant", a helpful, professional, and empathetic AI guide for a civic engagement platform.
+The platform allows citizens to report issues like potholes, broken streetlights, and garbage accumulation.
+Municipal officers use the platform to manage and resolve these issues.
+${contextStr}
+
+Your goals:
+1. Help users report issues by asking for necessary details (location, description, category).
+2. Help users check the status of their reports using their ticket ID (e.g. CH-XXXX-XXXX).
+3. Answer questions about city services and municipal departments.
+4. Maintain a trust-building, transparent, and helpful tone.
+5. If someone asks for "Community Hero", explain that it's a bridge between citizens and their local government.
+
+User message: "${message}"
+`;
+
+    // Using the generateContentWithRetry helper already present in the file
+    const result = await generateContentWithRetry(ai, {
+      model: "gemini-3.5-flash",
+      contents: [
+        ...(history || []).map((h: any) => ({
+          role: h.role,
+          parts: [{ text: h.text }]
+        })),
+        {
+          role: "user",
+          parts: [{ text: prompt }]
+        }
+      ]
+    });
+
+    const replyText = result.text || "I'm here to help! What can I do for you today?";
+
+    res.json({ success: true, reply: replyText });
+  } catch (error: any) {
+    console.error("AI Chat Error:", error);
+    
+    // Fallback response for demo
+    const fallbackResponses = [
+      "I'm here to help you make your community better! Would you like to report a new issue?",
+      "You can track your existing reports in the 'My Conversations' tab.",
+      "Municipal officers are working hard to resolve issues. Is there something specific I can help you with?",
+      "If you see a pothole or a broken streetlight, let me know and I'll help you file a report."
+    ];
+    const randomReply = fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
+    
+    res.json({ 
+      success: true, 
+      reply: randomReply,
+      warning: "Running on fallback due to API configuration issues." 
+    });
+  }
+});
+
+// 6. Mount Vite middleware for development or serve build folder in production
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

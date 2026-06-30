@@ -60,7 +60,7 @@ function MapEvents({
 }
 
 interface ReportIssueFormProps {
-  onSuccess: (newIssue: Omit<Issue, "id">) => void;
+  onSuccess: (newIssue: Omit<Issue, "id" | "ticketId">) => void;
   onCancel: () => void;
   currentUser?: User | null;
 }
@@ -192,7 +192,7 @@ export default function ReportIssueForm({ onSuccess, onCancel, currentUser }: Re
             const aiResult: AIAnalysis = data.analysis;
 
             // Prepare final structure to send back
-            const newIssuePayload: Omit<Issue, "id"> = {
+            const newIssuePayload: Omit<Issue, "id" | "ticketId"> = {
               title,
               description,
               category: aiResult.category,

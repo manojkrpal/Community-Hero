@@ -85,6 +85,7 @@ export interface Issue {
   completedImageUrl?: string;
   completedNotes?: string;
   editRequestPending?: boolean;
+  ticketId: string;
   deleteRequestPending?: boolean;
   editRequestApproved?: boolean;
   deleteRequestApproved?: boolean;

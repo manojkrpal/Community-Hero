@@ -34,9 +34,10 @@
         "safetyPrecautions": { "type": "array" },
         "estimatedHours": { "type": "number" },
         "resolutionNotes": { "type": "string" },
-        "resolutionImageUrl": { "type": "string" }
+        "resolutionImageUrl": { "type": "string" },
+        "ticketId": { "type": "string" }
       },
-      "required": ["title", "description", "category", "severity", "status", "latitude", "longitude", "address", "reporterId", "reporterName", "createdAt", "updatedAt"]
+      "required": ["title", "description", "category", "severity", "status", "latitude", "longitude", "address", "reporterId", "reporterName", "createdAt", "updatedAt", "ticketId"]
     },
     "User": {
       "title": "User",
