@@ -1174,12 +1174,14 @@ export default function App() {
           {currentUser ? (
             <div className="flex items-center gap-4">
               <div className="hidden sm:flex items-center gap-3 text-right">
-                <div>
-                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Reputation</div>
-                  <div className="text-sm font-bold text-slate-900 italic">
-                    Level {currentUser.level} Guardian <span className="text-blue-600">• {currentUser.xp} XP</span>
+                {currentUser.role !== "Administrator" && currentUser.role !== "Municipality Officer" && (
+                  <div>
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Reputation</div>
+                    <div className="text-sm font-bold text-slate-900 italic">
+                      Level {currentUser.level} Guardian <span className="text-blue-600">• {currentUser.xp} XP</span>
+                    </div>
                   </div>
-                </div>
+                )}
                 <div className="w-10 h-10 rounded-full bg-blue-100 border-2 border-blue-500 shadow-sm overflow-hidden flex items-center justify-center font-bold text-blue-700">
                   {currentUser.name ? currentUser.name.split(" ").map(n => n[0]).join("").toUpperCase() : "U"}
                 </div>
